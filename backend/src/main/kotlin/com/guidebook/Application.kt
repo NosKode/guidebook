@@ -1,7 +1,7 @@
 package com.guidebook
 
-import com.guidebook.config.DatabaseConfig
 import com.guidebook.config.KoinModule
+import com.guidebook.config.initDatabase
 import com.guidebook.plugins.*
 import com.typesafe.config.ConfigFactory
 import io.ktor.server.application.*
@@ -27,7 +27,7 @@ fun main() {
 }
 
 fun Application.module() {
-    DatabaseConfig.init(this)
+    initDatabase()
     install(Koin) {
         slf4jLogger()
         modules(KoinModule.appModule(this@module))
