@@ -16,6 +16,7 @@ import com.guidebook.service.AuthService
 import com.guidebook.service.CategoryService
 import com.guidebook.service.FavoriteService
 import com.guidebook.service.FileStorageService
+import com.guidebook.service.ModerationService
 import com.guidebook.service.PhotoService
 import com.guidebook.service.PlaceService
 import com.guidebook.service.ReviewService
@@ -53,6 +54,11 @@ object KoinModule {
             val baseUrl = application.environment.config
                 .propertyOrNull("server.baseUrl")?.getString() ?: "http://localhost:8080"
             FavoriteService(get(), get(), get(), baseUrl)
+        }
+        single {
+            val baseUrl = application.environment.config
+                .propertyOrNull("server.baseUrl")?.getString() ?: "http://localhost:8080"
+            ModerationService(get(), baseUrl)
         }
     }
 }

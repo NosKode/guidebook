@@ -41,6 +41,7 @@ interface PlaceRepository {
         description: String?
     ): Place?
     suspend fun updateStatus(id: UUID, status: PlaceStatus): Place?
+    suspend fun reject(id: UUID, reason: String?): Place?
     suspend fun updateCoverPath(id: UUID, path: String): Boolean
     suspend fun delete(id: UUID): Boolean
     suspend fun getReviewStatsBatch(placeIds: List<UUID>): Map<UUID, Pair<Double, Int>>
@@ -81,7 +82,7 @@ class PlaceRepositoryImpl : PlaceRepository {
 
     override suspend fun findPending(): List<Place> = newSuspendedTransaction {
         PlacesTable.select { PlacesTable.status eq PlaceStatus.PENDING }
-            .orderBy(PlacesTable.createdAt, SortOrder.ASC)
+            .orderBy(PlacesTable.createdAt, SortOrder.DESC)
             .map { it.toPlace() }
     }
 
@@ -135,6 +136,16 @@ class PlaceRepositoryImpl : PlaceRepository {
         val rowsUpdated = PlacesTable.update({ PlacesTable.id eq id }) {
             it[PlacesTable.status] = status
             it[PlacesTable.updatedAt] = LocalDateTime.now()
+        }
+        if (rowsUpdated == 0) return@newSuspendedTransaction null
+        PlacesTable.select { PlacesTable.id eq id }.single().toPlace()
+    }
+
+    override suspend fun reject(id: UUID, reason: String?): Place? = newSuspendedTransaction {
+        val rowsUpdated = PlacesTable.update({ PlacesTable.id eq id }) {
+            it[PlacesTable.status]          = PlaceStatus.REJECTED
+            it[PlacesTable.rejectionReason] = reason
+            it[PlacesTable.updatedAt]       = LocalDateTime.now()
         }
         if (rowsUpdated == 0) return@newSuspendedTransaction null
         PlacesTable.select { PlacesTable.id eq id }.single().toPlace()
@@ -196,6 +207,7 @@ class PlaceRepositoryImpl : PlaceRepository {
         coverPath = this[PlacesTable.coverPath],
         uploadedBy = this[PlacesTable.uploadedBy]?.value,
         status = this[PlacesTable.status],
+        rejectionReason = this[PlacesTable.rejectionReason],
         createdAt = this[PlacesTable.createdAt],
         updatedAt = this[PlacesTable.updatedAt]
     )

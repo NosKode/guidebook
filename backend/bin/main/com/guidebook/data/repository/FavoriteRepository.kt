@@ -69,6 +69,7 @@ class FavoriteRepositoryImpl : FavoriteRepository {
         coverPath = this[PlacesTable.coverPath],
         uploadedBy = this[PlacesTable.uploadedBy]?.value,
         status = this[PlacesTable.status],
+        rejectionReason = this[PlacesTable.rejectionReason],
         createdAt = this[PlacesTable.createdAt],
         updatedAt = this[PlacesTable.updatedAt]
     )

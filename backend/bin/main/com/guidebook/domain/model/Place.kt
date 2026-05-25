@@ -14,6 +14,7 @@ data class Place(
     val coverPath: String?,
     val uploadedBy: UUID?,
     val status: PlaceStatus,
+    val rejectionReason: String?,
     val createdAt: LocalDateTime,
     val updatedAt: LocalDateTime
 )

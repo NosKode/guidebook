@@ -1,5 +1,6 @@
 package com.guidebook.plugins
 
+import com.guidebook.routes.adminRoutes
 import com.guidebook.routes.authRoutes
 import com.guidebook.routes.categoryRoutes
 import com.guidebook.routes.favoriteRoutes
@@ -9,6 +10,7 @@ import com.guidebook.routes.reviewRoutes
 import com.guidebook.service.AuthService
 import com.guidebook.service.CategoryService
 import com.guidebook.service.FavoriteService
+import com.guidebook.service.ModerationService
 import com.guidebook.service.PhotoService
 import com.guidebook.service.PlaceService
 import com.guidebook.service.ReviewService
@@ -24,8 +26,9 @@ fun Application.configureRouting() {
     val categoryService = get<CategoryService>()
     val placeService    = get<PlaceService>()
     val photoService    = get<PhotoService>()
-    val reviewService   = get<ReviewService>()
-    val favoriteService = get<FavoriteService>()
+    val reviewService      = get<ReviewService>()
+    val favoriteService    = get<FavoriteService>()
+    val moderationService  = get<ModerationService>()
     val storagePath     = environment.config.propertyOrNull("storage.path")?.getString() ?: "./storage"
 
     routing {
@@ -42,5 +45,6 @@ fun Application.configureRouting() {
         photoRoutes(photoService, authService)
         reviewRoutes(reviewService, authService)
         favoriteRoutes(favoriteService, authService)
+        adminRoutes(moderationService, authService)
     }
 }
