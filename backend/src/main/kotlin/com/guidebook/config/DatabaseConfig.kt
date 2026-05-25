@@ -24,6 +24,7 @@ fun Application.initDatabase() {
     }
 
     val dataSource = HikariDataSource(hikariConfig)
+    environment.monitor.subscribe(ApplicationStopped) { dataSource.close() }
 
     Flyway.configure()
         .dataSource(dataSource)

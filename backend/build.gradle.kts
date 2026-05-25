@@ -68,8 +68,11 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:$coroutines_version")
 
     // Tests
-    testImplementation("io.ktor:ktor-server-tests-jvm:$ktor_version")
-    testImplementation("org.jetbrains.kotlin:kotlin-test-junit:$kotlin_version")
+    testImplementation("io.ktor:ktor-server-test-host:$ktor_version")
+    testImplementation("io.ktor:ktor-client-content-negotiation:$ktor_version")
+    testImplementation("org.testcontainers:postgresql:1.19.7")
+    testImplementation("org.jetbrains.kotlin:kotlin-test-junit5:$kotlin_version")
+    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.10.2")
 }
 
 java {
@@ -85,4 +88,9 @@ tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
 
 tasks.withType<com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar> {
     mergeServiceFiles()
+}
+
+tasks.test {
+    useJUnitPlatform()
+    jvmArgs("-DDOCKER_HOST=tcp://localhost:2375")
 }
