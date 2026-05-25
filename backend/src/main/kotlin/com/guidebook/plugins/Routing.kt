@@ -2,8 +2,10 @@ package com.guidebook.plugins
 
 import com.guidebook.routes.authRoutes
 import com.guidebook.routes.categoryRoutes
+import com.guidebook.routes.placeRoutes
 import com.guidebook.service.AuthService
 import com.guidebook.service.CategoryService
+import com.guidebook.service.PlaceService
 import io.ktor.server.application.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
@@ -12,6 +14,7 @@ import org.koin.ktor.ext.get
 fun Application.configureRouting() {
     val authService     = get<AuthService>()
     val categoryService = get<CategoryService>()
+    val placeService    = get<PlaceService>()
 
     routing {
         get("/") {
@@ -22,5 +25,6 @@ fun Application.configureRouting() {
         }
         authRoutes(authService)
         categoryRoutes(categoryService, authService)
+        placeRoutes(placeService, authService)
     }
 }
