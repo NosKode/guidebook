@@ -17,7 +17,6 @@ fun Application.configureRouting() {
         get("/health") {
             call.respond(mapOf("status" to "ok"))
         }
-
         authRoutes(authService)
     }
 }

@@ -33,9 +33,9 @@ fun Application.module() {
         modules(KoinModule.appModule(this@module))
     }
     configureSerialization()
+    configureCors()
     configureAuthentication()
     configureStatusPages()
     configureCallLogging()
-    configureCors()
     configureRouting()
 }
