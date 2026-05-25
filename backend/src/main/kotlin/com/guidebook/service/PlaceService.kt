@@ -13,12 +13,14 @@ import com.guidebook.domain.model.Place
 import com.guidebook.domain.model.PlaceStatus
 import com.guidebook.domain.model.User
 import com.guidebook.domain.model.UserRole
+import io.ktor.http.content.*
 import java.util.UUID
 import kotlin.math.ceil
 
 class PlaceService(
     private val placeRepository: PlaceRepository,
     private val categoryRepository: CategoryRepository,
+    private val fileStorageService: FileStorageService,
     private val baseUrl: String
 ) {
 
@@ -88,6 +90,15 @@ class PlaceService(
         val existing = placeRepository.findById(id) ?: throw NotFoundException("Place not found")
         checkOwnerOrAdmin(user, existing)
         placeRepository.delete(id)
+    }
+
+    suspend fun uploadCover(id: UUID, user: User, part: PartData.FileItem): PlaceDto {
+        val existing = placeRepository.findById(id) ?: throw NotFoundException("Place not found")
+        checkOwnerOrAdmin(user, existing)
+        existing.coverPath?.let { fileStorageService.deleteFile(it) }
+        val relativePath = fileStorageService.saveCover(id, part)
+        placeRepository.updateCoverPath(id, relativePath)
+        return enrichSingle(placeRepository.findById(id)!!)
     }
 
     suspend fun calculateAverageRating(placeId: UUID): Double =

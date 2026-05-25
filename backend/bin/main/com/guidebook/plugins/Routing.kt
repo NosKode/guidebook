@@ -7,14 +7,17 @@ import com.guidebook.service.AuthService
 import com.guidebook.service.CategoryService
 import com.guidebook.service.PlaceService
 import io.ktor.server.application.*
+import io.ktor.server.http.content.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import org.koin.ktor.ext.get
+import java.io.File
 
 fun Application.configureRouting() {
     val authService     = get<AuthService>()
     val categoryService = get<CategoryService>()
     val placeService    = get<PlaceService>()
+    val storagePath     = environment.config.propertyOrNull("storage.path")?.getString() ?: "./storage"
 
     routing {
         get("/") {
@@ -23,6 +26,7 @@ fun Application.configureRouting() {
         get("/health") {
             call.respond(mapOf("status" to "ok"))
         }
+        staticFiles("/files/images", File("$storagePath/images"))
         authRoutes(authService)
         categoryRoutes(categoryService, authService)
         placeRoutes(placeService, authService)

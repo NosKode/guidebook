@@ -8,6 +8,7 @@ import com.guidebook.data.repository.UserRepository
 import com.guidebook.data.repository.UserRepositoryImpl
 import com.guidebook.service.AuthService
 import com.guidebook.service.CategoryService
+import com.guidebook.service.FileStorageService
 import com.guidebook.service.PlaceService
 import io.ktor.server.application.*
 import org.koin.dsl.module
@@ -21,9 +22,14 @@ object KoinModule {
         single { AuthService(get(), get()) }
         single { CategoryService(get()) }
         single {
+            val storagePath = application.environment.config
+                .propertyOrNull("storage.path")?.getString() ?: "./storage"
+            FileStorageService(storagePath)
+        }
+        single {
             val baseUrl = application.environment.config
                 .propertyOrNull("server.baseUrl")?.getString() ?: "http://localhost:8080"
-            PlaceService(get(), get(), baseUrl)
+            PlaceService(get(), get(), get(), baseUrl)
         }
     }
 }

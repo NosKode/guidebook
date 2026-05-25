@@ -1,12 +1,14 @@
 package com.guidebook.routes
 
 import com.guidebook.data.dto.PlaceCreateRequest
+import com.guidebook.data.dto.PlaceDto
 import com.guidebook.data.dto.PlaceUpdateRequest
 import com.guidebook.domain.exception.BadRequestException
 import com.guidebook.service.AuthService
 import com.guidebook.service.PlaceService
 import com.guidebook.util.currentUser
 import io.ktor.http.*
+import io.ktor.http.content.*
 import io.ktor.server.application.*
 import io.ktor.server.auth.*
 import io.ktor.server.auth.jwt.*
@@ -49,6 +51,19 @@ fun Route.placeRoutes(placeService: PlaceService, authService: AuthService) {
                 val id   = call.placeIdOrThrow()
                 placeService.deletePlace(id, user)
                 call.respond(HttpStatusCode.NoContent)
+            }
+
+            post("/{id}/cover") {
+                val user = call.currentUser(authService)
+                val id   = call.placeIdOrThrow()
+                val multipart = call.receiveMultipart()
+                var dto: PlaceDto? = null
+                multipart.forEachPart { part ->
+                    if (part is PartData.FileItem && part.name == "cover" && dto == null) {
+                        dto = placeService.uploadCover(id, user, part)
+                    }
+                }
+                call.respond(HttpStatusCode.OK, dto ?: throw BadRequestException("No file with name 'cover' provided"))
             }
         }
 
