@@ -2,9 +2,11 @@ package com.guidebook.plugins
 
 import com.guidebook.routes.authRoutes
 import com.guidebook.routes.categoryRoutes
+import com.guidebook.routes.photoRoutes
 import com.guidebook.routes.placeRoutes
 import com.guidebook.service.AuthService
 import com.guidebook.service.CategoryService
+import com.guidebook.service.PhotoService
 import com.guidebook.service.PlaceService
 import io.ktor.server.application.*
 import io.ktor.server.http.content.*
@@ -17,6 +19,7 @@ fun Application.configureRouting() {
     val authService     = get<AuthService>()
     val categoryService = get<CategoryService>()
     val placeService    = get<PlaceService>()
+    val photoService    = get<PhotoService>()
     val storagePath     = environment.config.propertyOrNull("storage.path")?.getString() ?: "./storage"
 
     routing {
@@ -30,5 +33,6 @@ fun Application.configureRouting() {
         authRoutes(authService)
         categoryRoutes(categoryService, authService)
         placeRoutes(placeService, authService)
+        photoRoutes(photoService, authService)
     }
 }

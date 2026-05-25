@@ -2,6 +2,8 @@ package com.guidebook.config
 
 import com.guidebook.data.repository.CategoryRepository
 import com.guidebook.data.repository.CategoryRepositoryImpl
+import com.guidebook.data.repository.PhotoRepository
+import com.guidebook.data.repository.PhotoRepositoryImpl
 import com.guidebook.data.repository.PlaceRepository
 import com.guidebook.data.repository.PlaceRepositoryImpl
 import com.guidebook.data.repository.UserRepository
@@ -9,6 +11,7 @@ import com.guidebook.data.repository.UserRepositoryImpl
 import com.guidebook.service.AuthService
 import com.guidebook.service.CategoryService
 import com.guidebook.service.FileStorageService
+import com.guidebook.service.PhotoService
 import com.guidebook.service.PlaceService
 import io.ktor.server.application.*
 import org.koin.dsl.module
@@ -19,6 +22,7 @@ object KoinModule {
         single<UserRepository> { UserRepositoryImpl() }
         single<CategoryRepository> { CategoryRepositoryImpl() }
         single<PlaceRepository> { PlaceRepositoryImpl() }
+        single<PhotoRepository> { PhotoRepositoryImpl() }
         single { AuthService(get(), get()) }
         single { CategoryService(get()) }
         single {
@@ -30,6 +34,11 @@ object KoinModule {
             val baseUrl = application.environment.config
                 .propertyOrNull("server.baseUrl")?.getString() ?: "http://localhost:8080"
             PlaceService(get(), get(), get(), baseUrl)
+        }
+        single {
+            val baseUrl = application.environment.config
+                .propertyOrNull("server.baseUrl")?.getString() ?: "http://localhost:8080"
+            PhotoService(get(), get(), get(), baseUrl)
         }
     }
 }
