@@ -9,6 +9,6 @@ object UsersTable : UUIDTable("users") {
     val email        = varchar("email", 255).uniqueIndex()
     val passwordHash = varchar("password_hash", 255)
     val displayName  = varchar("display_name", 100).nullable()
-    val role         = enumerationByName<UserRole>("role", 20)
+    val role         = pgEnum<UserRole>("role", "user_role")
     val createdAt    = datetime("created_at").defaultExpression(CurrentDateTime)
 }

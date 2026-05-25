@@ -15,7 +15,7 @@ object PlacesTable : UUIDTable("places") {
     val description = text("description").nullable()
     val coverPath   = varchar("cover_path", 500).nullable()
     val uploadedBy  = optReference("uploaded_by", UsersTable, onDelete = ReferenceOption.SET_NULL)
-    val status      = enumerationByName<PlaceStatus>("status", 20)
+    val status      = pgEnum<PlaceStatus>("status", "place_status")
     val createdAt   = datetime("created_at").defaultExpression(CurrentDateTime)
     val updatedAt   = datetime("updated_at").defaultExpression(CurrentDateTime)
 }

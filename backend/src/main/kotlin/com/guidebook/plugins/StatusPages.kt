@@ -1,8 +1,10 @@
 package com.guidebook.plugins
 
+import com.guidebook.domain.exception.BadRequestException
 import com.guidebook.domain.exception.ConflictException
 import com.guidebook.domain.exception.ForbiddenException
 import com.guidebook.domain.exception.NotFoundException
+import com.guidebook.domain.exception.UnauthorizedException
 import com.guidebook.domain.exception.ValidationException
 import io.ktor.http.*
 import io.ktor.server.application.*
@@ -11,6 +13,12 @@ import io.ktor.server.response.*
 
 fun Application.configureStatusPages() {
     install(StatusPages) {
+        exception<BadRequestException> { call, cause ->
+            call.respond(HttpStatusCode.BadRequest, mapOf("error" to cause.message))
+        }
+        exception<UnauthorizedException> { call, cause ->
+            call.respond(HttpStatusCode.Unauthorized, mapOf("error" to cause.message))
+        }
         exception<ValidationException> { call, cause ->
             call.respond(HttpStatusCode.BadRequest, mapOf("error" to cause.message))
         }
