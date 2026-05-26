@@ -103,6 +103,9 @@ dependencies {
     // Яндекс MapKit
     implementation("com.yandex.android:maps.mobile:4.6.1-lite")
 
+    // Material Icons Extended
+    implementation("androidx.compose.material:material-icons-extended")
+
     // Core
     implementation("androidx.core:core-ktx:1.13.1")
 }

@@ -24,23 +24,21 @@ fun Route.photoRoutes(photoService: PhotoService, authService: AuthService) {
 
         authenticate("auth-jwt") {
             post {
-                val user    = call.currentUser(authService)
-                val placeId = call.placeUuidOrThrow()
+                val user      = call.currentUser(authService)
+                val placeId   = call.placeUuidOrThrow()
                 val multipart = call.receiveMultipart()
                 var caption: String? = null
-                var dto: com.guidebook.data.dto.PhotoDto? = null
+                var filePart: PartData.FileItem? = null
                 multipart.forEachPart { part ->
                     when {
-                        part is PartData.FormItem && part.name == "caption" ->
-                            caption = part.value
-                        part is PartData.FileItem && part.name == "photo" && dto == null ->
-                            dto = photoService.uploadPhoto(placeId, user, caption, part)
+                        part is PartData.FormItem && part.name == "caption" -> caption = part.value
+                        part is PartData.FileItem && part.name == "photo" && filePart == null -> filePart = part
+                        else -> part.dispose()
                     }
                 }
-                call.respond(
-                    HttpStatusCode.Created,
-                    dto ?: throw BadRequestException("No file with name 'photo' provided")
-                )
+                val dto = filePart?.let { photoService.uploadPhoto(placeId, user, caption, it) }
+                    ?: throw BadRequestException("No file with name 'photo' provided")
+                call.respond(HttpStatusCode.Created, dto)
             }
         }
     }
