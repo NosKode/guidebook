@@ -12,20 +12,23 @@ sealed class ApiResult<out T> {
     object NetworkError : ApiResult<Nothing>()
 }
 
+@Suppress("UNCHECKED_CAST")
 suspend fun <T> safeApiCall(call: suspend () -> Response<T>): ApiResult<T> {
     return try {
         val response = call()
         if (response.isSuccessful) {
-            ApiResult.Success(response.body()!!)
+            // response.body() == null для 204 No Content (Unit-ответы)
+            val body: T = response.body() ?: (Unit as T)
+            ApiResult.Success(body)
         } else {
             ApiResult.Error(response.code(), response.errorBody()?.string() ?: "Unknown error")
         }
     } catch (e: CancellationException) {
-        // Корутина была отменена — пробрасываем дальше, не пишем ошибку в UI
+        // Корутина была отменена — пробрасываем, не пишем ошибку в UI
         throw e
     } catch (e: IOException) {
-        // Перед тем как вернуть NetworkError, убеждаемся что корутина не отменена.
-        // OkHttp бросает IOException("Canceled") при отмене вызова — это не сетевая ошибка.
+        // OkHttp бросает IOException("Canceled") при программной отмене вызова.
+        // Проверяем, не отменена ли корутина, чтобы не показывать ложную "сетевую" ошибку.
         coroutineContext.ensureActive()
         ApiResult.NetworkError
     } catch (e: Exception) {

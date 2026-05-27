@@ -139,11 +139,10 @@ fun AppNavGraph() {
                 ) { entry ->
                     val placeId = entry.arguments?.getString("placeId") ?: ""
                     PlaceDetailScreen(
-                        placeId     = placeId,
-                        onBack      = { navController.popBackStack() },
-                        onPhotoClick = { url ->
-                            navController.navigate(Routes.photoViewer(url))
-                        }
+                        placeId      = placeId,
+                        onBack       = { navController.popBackStack() },
+                        onPhotoClick = { url -> navController.navigate(Routes.photoViewer(url)) },
+                        onAddPhoto   = { id  -> navController.navigate(Routes.addPhoto(id)) }
                     )
                 }
 

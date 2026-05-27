@@ -3,7 +3,10 @@ package com.guidebook.app.di
 import com.guidebook.app.BuildConfig
 import com.guidebook.app.data.remote.api.AuthApi
 import com.guidebook.app.data.remote.api.CategoryApi
+import com.guidebook.app.data.remote.api.FavoriteApi
+import com.guidebook.app.data.remote.api.PhotoApi
 import com.guidebook.app.data.remote.api.PlaceApi
+import com.guidebook.app.data.remote.api.ReviewApi
 import com.guidebook.app.data.remote.interceptor.AuthInterceptor
 import dagger.Module
 import dagger.Provides
@@ -24,11 +27,8 @@ object NetworkModule {
     @Singleton
     fun provideLoggingInterceptor(): HttpLoggingInterceptor =
         HttpLoggingInterceptor().apply {
-            level = if (BuildConfig.DEBUG) {
-                HttpLoggingInterceptor.Level.BODY
-            } else {
-                HttpLoggingInterceptor.Level.NONE
-            }
+            level = if (BuildConfig.DEBUG) HttpLoggingInterceptor.Level.BODY
+                    else HttpLoggingInterceptor.Level.NONE
         }
 
     @Provides
@@ -53,18 +53,21 @@ object NetworkModule {
             .addConverterFactory(GsonConverterFactory.create())
             .build()
 
-    @Provides
-    @Singleton
-    fun provideAuthApi(retrofit: Retrofit): AuthApi =
-        retrofit.create(AuthApi::class.java)
+    @Provides @Singleton
+    fun provideAuthApi(retrofit: Retrofit): AuthApi = retrofit.create(AuthApi::class.java)
 
-    @Provides
-    @Singleton
-    fun providePlaceApi(retrofit: Retrofit): PlaceApi =
-        retrofit.create(PlaceApi::class.java)
+    @Provides @Singleton
+    fun providePlaceApi(retrofit: Retrofit): PlaceApi = retrofit.create(PlaceApi::class.java)
 
-    @Provides
-    @Singleton
-    fun provideCategoryApi(retrofit: Retrofit): CategoryApi =
-        retrofit.create(CategoryApi::class.java)
+    @Provides @Singleton
+    fun provideCategoryApi(retrofit: Retrofit): CategoryApi = retrofit.create(CategoryApi::class.java)
+
+    @Provides @Singleton
+    fun providePhotoApi(retrofit: Retrofit): PhotoApi = retrofit.create(PhotoApi::class.java)
+
+    @Provides @Singleton
+    fun provideReviewApi(retrofit: Retrofit): ReviewApi = retrofit.create(ReviewApi::class.java)
+
+    @Provides @Singleton
+    fun provideFavoriteApi(retrofit: Retrofit): FavoriteApi = retrofit.create(FavoriteApi::class.java)
 }
