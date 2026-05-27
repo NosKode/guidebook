@@ -6,6 +6,7 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavType
@@ -22,6 +23,8 @@ import com.guidebook.app.presentation.catalog.CatalogScreen
 import com.guidebook.app.presentation.detail.PhotoViewerScreen
 import com.guidebook.app.presentation.detail.PlaceDetailScreen
 import com.guidebook.app.presentation.favorites.FavoritesScreen
+import com.guidebook.app.presentation.map.CoordinatePickerScreen
+import com.guidebook.app.presentation.map.MapScreen
 import com.guidebook.app.presentation.myplaces.AddPhotoScreen
 import com.guidebook.app.presentation.myplaces.AddPlaceScreen
 import com.guidebook.app.presentation.myplaces.MyPlacesScreen
@@ -29,22 +32,22 @@ import com.guidebook.app.presentation.profile.ProfileScreen
 import com.guidebook.app.presentation.splash.SplashScreen
 
 private val bottomBarRoutes = setOf(
-    Routes.CATALOG, Routes.FAVORITES, Routes.MY_PLACES, Routes.PROFILE
+    Routes.CATALOG, Routes.MAP, Routes.FAVORITES, Routes.MY_PLACES, Routes.PROFILE
 )
 
 @Composable
 fun AppNavGraph() {
-    val navController = rememberNavController()
+    val navController  = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
-    val currentRoute = backStackEntry?.destination?.route
-    val showBottomBar = currentRoute in bottomBarRoutes
+    val currentRoute   = backStackEntry?.destination?.route
+    val showBottomBar  = currentRoute in bottomBarRoutes
 
     Scaffold(
         bottomBar = {
             AnimatedVisibility(
                 visible = showBottomBar,
-                enter = slideInVertically { it },
-                exit = slideOutVertically { it }
+                enter   = slideInVertically { it },
+                exit    = slideOutVertically { it }
             ) {
                 BottomNavBar(navController = navController)
             }
@@ -89,8 +92,8 @@ fun AppNavGraph() {
 
                 composable(Routes.REGISTER) {
                     RegisterScreen(
-                        onNavigateToLogin  = { navController.popBackStack() },
-                        onRegisterSuccess  = {
+                        onNavigateToLogin = { navController.popBackStack() },
+                        onRegisterSuccess = {
                             navController.navigate(Routes.MAIN_GRAPH) {
                                 popUpTo(Routes.AUTH_GRAPH) { inclusive = true }
                             }
@@ -106,17 +109,20 @@ fun AppNavGraph() {
             ) {
                 composable(Routes.CATALOG) {
                     CatalogScreen(
-                        onPlaceClick = { id ->
-                            navController.navigate(Routes.placeDetail(id))
-                        }
+                        onPlaceClick = { id -> navController.navigate(Routes.placeDetail(id)) }
+                    )
+                }
+
+                // ── Карта ─────────────────────────────────────────────
+                composable(Routes.MAP) {
+                    MapScreen(
+                        onPlaceClick = { id -> navController.navigate(Routes.placeDetail(id)) }
                     )
                 }
 
                 composable(Routes.FAVORITES) {
                     FavoritesScreen(
-                        onPlaceClick = { id ->
-                            navController.navigate(Routes.placeDetail(id))
-                        }
+                        onPlaceClick = { id -> navController.navigate(Routes.placeDetail(id)) }
                     )
                 }
 
@@ -131,7 +137,7 @@ fun AppNavGraph() {
                 composable(Routes.PROFILE) {
                     ProfileScreen(
                         onAdminPanel = { navController.navigate(Routes.ADMIN) },
-                        onLogout = {
+                        onLogout     = {
                             navController.navigate(Routes.AUTH_GRAPH) {
                                 popUpTo(Routes.MAIN_GRAPH) { inclusive = true }
                             }
@@ -169,8 +175,21 @@ fun AppNavGraph() {
                     )
                 }
 
-                composable(Routes.ADD_PLACE) {
-                    AddPlaceScreen(onBack = { navController.popBackStack() })
+                // ── Добавить место (с передачей координат из пикера) ───
+                composable(Routes.ADD_PLACE) { entry ->
+                    val pickedLat by entry.savedStateHandle
+                        .getStateFlow<Double?>("pickedLat", null)
+                        .collectAsState()
+                    val pickedLon by entry.savedStateHandle
+                        .getStateFlow<Double?>("pickedLon", null)
+                        .collectAsState()
+
+                    AddPlaceScreen(
+                        onBack            = { navController.popBackStack() },
+                        onPickCoordinates = { navController.navigate(Routes.COORDINATE_PICKER) },
+                        pickedLat         = pickedLat,
+                        pickedLon         = pickedLon
+                    )
                 }
 
                 composable(
@@ -186,6 +205,22 @@ fun AppNavGraph() {
 
                 composable(Routes.ADMIN) {
                     AdminPanelScreen(onBack = { navController.popBackStack() })
+                }
+
+                // ── Пикер координат ────────────────────────────────────
+                composable(Routes.COORDINATE_PICKER) {
+                    CoordinatePickerScreen(
+                        onBack    = { navController.popBackStack() },
+                        onConfirm = { lat, lon ->
+                            navController.previousBackStackEntry
+                                ?.savedStateHandle
+                                ?.apply {
+                                    set("pickedLat", lat)
+                                    set("pickedLon", lon)
+                                }
+                            navController.popBackStack()
+                        }
+                    )
                 }
             }
         }

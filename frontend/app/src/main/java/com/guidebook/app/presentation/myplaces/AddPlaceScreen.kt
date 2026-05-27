@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -24,6 +25,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AddPhotoAlternate
+import androidx.compose.material.icons.outlined.Map
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenuItem
@@ -33,6 +35,7 @@ import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -59,26 +62,35 @@ import coil.compose.AsyncImage
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddPlaceScreen(
-    onBack:    () -> Unit          = {},
-    viewModel: AddPlaceViewModel   = hiltViewModel()
+    onBack:            () -> Unit        = {},
+    onPickCoordinates: () -> Unit        = {},
+    pickedLat:         Double?           = null,
+    pickedLon:         Double?           = null,
+    viewModel:         AddPlaceViewModel = hiltViewModel()
 ) {
     val state    by viewModel.state.collectAsState()
     val snackbar = remember { SnackbarHostState() }
 
-    // ── Форма ──────────────────────────────────────────────────────────────
-    var name        by remember { mutableStateOf("") }
-    var address     by remember { mutableStateOf("") }
-    var latStr      by remember { mutableStateOf("") }
-    var lonStr      by remember { mutableStateOf("") }
-    var description by remember { mutableStateOf("") }
-    var selectedCategory    by remember { mutableStateOf(state.categories.firstOrNull()) }
+    // ── Поля формы ─────────────────────────────────────────────────────────
+    var name                 by remember { mutableStateOf("") }
+    var address              by remember { mutableStateOf("") }
+    var latStr               by remember { mutableStateOf("") }
+    var lonStr               by remember { mutableStateOf("") }
+    var description          by remember { mutableStateOf("") }
+    var selectedCategory     by remember { mutableStateOf(state.categories.firstOrNull()) }
     var categoryMenuExpanded by remember { mutableStateOf(false) }
 
-    // Синхронизация категорий после их загрузки
+    // Синхронизация категорий после загрузки
     LaunchedEffect(state.categories) {
         if (selectedCategory == null && state.categories.isNotEmpty()) {
             selectedCategory = state.categories.first()
         }
+    }
+
+    // Автозаполнение координат при возврате из пикера
+    LaunchedEffect(pickedLat, pickedLon) {
+        pickedLat?.let { latStr = "%.6f".format(it) }
+        pickedLon?.let { lonStr = "%.6f".format(it) }
     }
 
     // Навигация назад при успехе
@@ -86,7 +98,7 @@ fun AddPlaceScreen(
         if (state.isSuccess) onBack()
     }
 
-    // Показ ошибок через Snackbar
+    // Показ ошибок
     LaunchedEffect(state.error) {
         state.error?.let {
             snackbar.showSnackbar(it)
@@ -94,12 +106,10 @@ fun AddPlaceScreen(
         }
     }
 
-    // ── Выбор изображения ──────────────────────────────────────────────────
+    // Выбор изображения
     val imageLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetContent()
-    ) { uri: Uri? ->
-        uri?.let { viewModel.pickImage(it) }
-    }
+        ActivityResultContracts.GetContent()
+    ) { uri: Uri? -> uri?.let { viewModel.pickImage(it) } }
 
     Scaffold(
         topBar = {
@@ -125,8 +135,8 @@ fun AddPlaceScreen(
 
             // ── Обложка ──────────────────────────────────────────────────
             CoverPicker(
-                uri      = viewModel.selectedImageUri,
-                onPick   = { imageLauncher.launch("image/*") }
+                uri    = viewModel.selectedImageUri,
+                onPick = { imageLauncher.launch("image/*") }
             )
 
             // ── Название ─────────────────────────────────────────────────
@@ -152,23 +162,37 @@ fun AddPlaceScreen(
             // ── Координаты ───────────────────────────────────────────────
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 OutlinedTextField(
-                    value         = latStr,
-                    onValueChange = { latStr = it },
-                    label         = { Text("Широта") },
-                    placeholder   = { Text("55.7522") },
-                    singleLine    = true,
+                    value           = latStr,
+                    onValueChange   = { latStr = it },
+                    label           = { Text("Широта") },
+                    placeholder     = { Text("55.7522") },
+                    singleLine      = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                    modifier      = Modifier.weight(1f)
+                    modifier        = Modifier.weight(1f)
                 )
                 OutlinedTextField(
-                    value         = lonStr,
-                    onValueChange = { lonStr = it },
-                    label         = { Text("Долгота") },
-                    placeholder   = { Text("37.6156") },
-                    singleLine    = true,
+                    value           = lonStr,
+                    onValueChange   = { lonStr = it },
+                    label           = { Text("Долгота") },
+                    placeholder     = { Text("37.6156") },
+                    singleLine      = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                    modifier      = Modifier.weight(1f)
+                    modifier        = Modifier.weight(1f)
                 )
+            }
+
+            // ── Кнопка «Выбрать на карте» ─────────────────────────────
+            OutlinedButton(
+                onClick  = onPickCoordinates,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(
+                    imageVector        = Icons.Outlined.Map,
+                    contentDescription = null,
+                    modifier           = Modifier.size(18.dp)
+                )
+                Spacer(Modifier.width(8.dp))
+                Text("Выбрать координаты на карте")
             }
 
             // ── Категория ─────────────────────────────────────────────────
@@ -184,7 +208,7 @@ fun AddPlaceScreen(
                     trailingIcon  = {
                         ExposedDropdownMenuDefaults.TrailingIcon(expanded = categoryMenuExpanded)
                     },
-                    modifier      = Modifier
+                    modifier = Modifier
                         .fillMaxWidth()
                         .menuAnchor()
                 )
@@ -217,7 +241,7 @@ fun AddPlaceScreen(
 
             Spacer(Modifier.height(4.dp))
 
-            // ── Кнопка Submit ─────────────────────────────────────────────
+            // ── Кнопка отправки ───────────────────────────────────────────
             Button(
                 onClick = {
                     viewModel.submit(
@@ -236,8 +260,8 @@ fun AddPlaceScreen(
             ) {
                 if (state.isLoading) {
                     CircularProgressIndicator(
-                        modifier = Modifier.size(20.dp),
-                        color    = MaterialTheme.colorScheme.onPrimary,
+                        modifier    = Modifier.size(20.dp),
+                        color       = MaterialTheme.colorScheme.onPrimary,
                         strokeWidth = 2.dp
                     )
                 } else {
@@ -245,7 +269,7 @@ fun AddPlaceScreen(
                 }
             }
 
-            Spacer(Modifier.height(80.dp)) // отступ от FAB
+            Spacer(Modifier.height(80.dp))
         }
     }
 }
@@ -270,10 +294,10 @@ private fun CoverPicker(uri: Uri?, onPick: () -> Unit) {
     ) {
         if (uri != null) {
             AsyncImage(
-                model          = uri,
+                model              = uri,
                 contentDescription = "Обложка места",
-                contentScale   = ContentScale.Crop,
-                modifier       = Modifier.fillMaxSize()
+                contentScale       = ContentScale.Crop,
+                modifier           = Modifier.fillMaxSize()
             )
         } else {
             Column(
