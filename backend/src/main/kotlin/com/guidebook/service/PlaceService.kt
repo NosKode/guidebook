@@ -25,9 +25,9 @@ class PlaceService(
 ) {
 
     suspend fun getApprovedPlaces(
-        categoryId: Int?, search: String?, page: Int, pageSize: Int
+        categoryId: Int?, search: String?, page: Int, pageSize: Int, sortBy: String? = null
     ): PagedResponse<PlaceDto> {
-        val result = placeRepository.findApproved(categoryId, search, page, pageSize)
+        val result = placeRepository.findApproved(categoryId, search, page, pageSize, sortBy)
         val totalPages = if (result.totalItems == 0L) 0
             else ceil(result.totalItems.toDouble() / pageSize).toInt()
         return PagedResponse(

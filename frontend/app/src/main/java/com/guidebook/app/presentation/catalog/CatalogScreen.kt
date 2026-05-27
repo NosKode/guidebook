@@ -1,28 +1,34 @@
 package com.guidebook.app.presentation.catalog
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Sort
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -30,7 +36,12 @@ import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.pulltorefresh.PullToRefreshContainer
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -39,18 +50,20 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-
-private val fakeCategories = listOf("Все", "Музеи", "Парки", "Рестораны", "Театры", "Галереи")
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.guidebook.app.presentation.components.PlaceCard
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CatalogScreen(
-    onPlaceClick: (String) -> Unit = {}
+    onPlaceClick: (String) -> Unit = {},
+    viewModel: CatalogViewModel = hiltViewModel()
 ) {
-    var searchQuery by remember { mutableStateOf("") }
-    var selectedCategory by remember { mutableStateOf("Все") }
+    val state by viewModel.uiState.collectAsState()
+    var showSortMenu by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -62,21 +75,63 @@ fun CatalogScreen(
                         fontWeight = FontWeight.Bold
                     )
                 },
+                actions = {
+                    // ── Кнопка сортировки ───────────────────────────────────
+                    Box {
+                        IconButton(onClick = { showSortMenu = true }) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.Sort,
+                                contentDescription = "Сортировка"
+                            )
+                        }
+                        DropdownMenu(
+                            expanded = showSortMenu,
+                            onDismissRequest = { showSortMenu = false }
+                        ) {
+                            SortOption.values().forEach { option ->
+                                DropdownMenuItem(
+                                    text = {
+                                        Text(
+                                            text = option.label,
+                                            fontWeight = if (state.sortOption == option)
+                                                FontWeight.SemiBold else FontWeight.Normal
+                                        )
+                                    },
+                                    leadingIcon = if (state.sortOption == option) {
+                                        {
+                                            Icon(
+                                                imageVector = Icons.Default.Check,
+                                                contentDescription = null,
+                                                tint = MaterialTheme.colorScheme.primary
+                                            )
+                                        }
+                                    } else null,
+                                    onClick = {
+                                        viewModel.setSortOption(option)
+                                        showSortMenu = false
+                                    }
+                                )
+                            }
+                        }
+                    }
+                },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surface
                 )
             )
         }
-    ) { padding ->
+    ) { scaffoldPadding ->
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding)
+                .padding(scaffoldPadding)
         ) {
-            // Поиск
+
+            // ── Поиск ────────────────────────────────────────────────────
             TextField(
-                value = searchQuery,
-                onValueChange = { searchQuery = it },
+                value = state.searchQuery,
+                onValueChange = { viewModel.search(it) },
                 placeholder = { Text("Поиск мест...") },
                 leadingIcon = {
                     Icon(Icons.Default.Search, contentDescription = null)
@@ -94,106 +149,203 @@ fun CatalogScreen(
                 singleLine = true
             )
 
-            // Категории
+            // ── Категории ────────────────────────────────────────────────
             LazyRow(
                 contentPadding = PaddingValues(horizontal = 16.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                items(fakeCategories.size) { idx ->
-                    val cat = fakeCategories[idx]
+                // Чип "Все"
+                item {
                     FilterChip(
-                        selected = selectedCategory == cat,
-                        onClick = { selectedCategory = cat },
-                        label = { Text(cat) }
+                        selected = state.selectedCategoryId == null,
+                        onClick = { viewModel.filterByCategory(null) },
+                        label = { Text("Все") }
+                    )
+                }
+                items(items = state.categories, key = { it.id }) { category ->
+                    FilterChip(
+                        selected = state.selectedCategoryId == category.id,
+                        onClick = { viewModel.filterByCategory(category.id) },
+                        label = { Text(category.name) }
                     )
                 }
             }
 
             Spacer(Modifier.height(8.dp))
 
-            // Список мест (заглушки)
-            LazyColumn(
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                items(6) { index ->
-                    PlaceholderCard(
-                        index = index,
-                        onClick = { onPlaceClick("place-$index") }
-                    )
-                }
+            // ── Контент ──────────────────────────────────────────────────
+            when {
+                state.isLoading -> FullScreenLoading()
+                state.error != null && state.places.isEmpty() -> ErrorState(
+                    message = state.error!!,
+                    onRetry = { viewModel.refresh() }
+                )
+                state.places.isEmpty() -> EmptyState()
+                else -> PlacesList(
+                    state = state,
+                    onPlaceClick = onPlaceClick,
+                    onRefresh = { viewModel.refresh() },
+                    onLoadMore = { viewModel.loadNextPage() }
+                )
             }
         }
     }
 }
 
+// ── Список мест (Grid + Pull-to-refresh + пагинация) ────────────────────────
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun PlaceholderCard(index: Int, onClick: () -> Unit) {
-    val colors = listOf(
-        Color(0xFF81C784), Color(0xFF64B5F6), Color(0xFFFFB74D),
-        Color(0xFFBA68C8), Color(0xFF4DB6AC), Color(0xFFF06292)
-    )
-    val titles = listOf(
-        "Государственный Эрмитаж",
-        "Центральный парк культуры",
-        "Театр оперы и балета",
-        "Художественная галерея",
-        "Ботанический сад",
-        "Исторический музей"
-    )
-    val addresses = listOf(
-        "Дворцовая пл., 2", "ул. Ленина, 15", "пр. Мира, 7",
-        "ул. Советская, 3", "пр. Садовый, 12", "пл. Революции, 1"
-    )
+private fun PlacesList(
+    state: CatalogUiState,
+    onPlaceClick: (String) -> Unit,
+    onRefresh: () -> Unit,
+    onLoadMore: () -> Unit
+) {
+    val gridState = rememberLazyGridState()
+    val pullToRefreshState = rememberPullToRefreshState()
 
-    Card(
-        onClick = onClick,
-        modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        shape = RoundedCornerShape(16.dp)
+    // Запускаем реальный refresh, когда пользователь потянул
+    if (pullToRefreshState.isRefreshing) {
+        LaunchedEffect(true) { onRefresh() }
+    }
+
+    // Сбрасываем индикатор, когда ViewModel закончила обновление
+    LaunchedEffect(state.isRefreshing) {
+        if (!state.isRefreshing) pullToRefreshState.endRefresh()
+    }
+
+    // Определяем, достигли ли конца списка
+    val shouldLoadMore by remember {
+        derivedStateOf {
+            val layoutInfo = gridState.layoutInfo
+            val visibleItems = layoutInfo.visibleItemsInfo
+            if (visibleItems.isEmpty()) return@derivedStateOf false
+            val lastVisibleIndex = visibleItems.last().index
+            val totalItems = layoutInfo.totalItemsCount
+            lastVisibleIndex >= totalItems - 4 // за 4 элемента до конца
+        }
+    }
+
+    LaunchedEffect(shouldLoadMore) {
+        if (shouldLoadMore) onLoadMore()
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .nestedScroll(pullToRefreshState.nestedScrollConnection)
     ) {
-        Row(modifier = Modifier.padding(12.dp)) {
-            Box(
-                modifier = Modifier
-                    .size(80.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(colors[index % colors.size]),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = titles[index % titles.size].take(2),
-                    style = MaterialTheme.typography.titleLarge,
-                    color = Color.White,
-                    fontWeight = FontWeight.Bold
+        LazyVerticalGrid(
+            columns = GridCells.Fixed(2),
+            state = gridState,
+            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier.fillMaxSize()
+        ) {
+            items(
+                items = state.places,
+                key = { it.id }
+            ) { place ->
+                PlaceCard(
+                    place = place,
+                    onClick = { onPlaceClick(place.id) }
                 )
             }
 
-            Spacer(Modifier.width(12.dp))
-
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                Text(
-                    text = titles[index % titles.size],
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold
-                )
-                Text(
-                    text = addresses[index % addresses.size],
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("★ ${4.2 + index * 0.1}", color = Color(0xFFFFC107), fontWeight = FontWeight.Medium)
-                    Spacer(Modifier.width(8.dp))
-                    Text(
-                        text = "${12 + index * 5} отзывов",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+            // Индикатор загрузки следующей страницы
+            if (state.isLoadingMore) {
+                item(span = { GridItemSpan(2) }) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator(modifier = Modifier.size(32.dp))
+                    }
                 }
+            }
+        }
+
+        PullToRefreshContainer(
+            state = pullToRefreshState,
+            modifier = Modifier.align(Alignment.TopCenter)
+        )
+    }
+}
+
+// ── Вспомогательные состояния ────────────────────────────────────────────────
+
+@Composable
+private fun FullScreenLoading() {
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
+    ) {
+        CircularProgressIndicator()
+    }
+}
+
+@Composable
+private fun EmptyState() {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(32.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text(
+                text = "🔍",
+                style = MaterialTheme.typography.displayMedium
+            )
+            Text(
+                text = "Ничего не найдено",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold
+            )
+            Text(
+                text = "Попробуйте изменить запрос или выбрать другую категорию",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+@Composable
+private fun ErrorState(message: String, onRetry: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(32.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Text(
+                text = "😕",
+                style = MaterialTheme.typography.displayMedium
+            )
+            Text(
+                text = "Ошибка загрузки",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold
+            )
+            Text(
+                text = message,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            androidx.compose.material3.Button(onClick = onRetry) {
+                Text("Повторить")
             }
         }
     }

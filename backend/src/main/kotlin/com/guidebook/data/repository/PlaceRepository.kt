@@ -17,7 +17,7 @@ import java.util.UUID
 data class PagedResult<T>(val items: List<T>, val totalItems: Long)
 
 interface PlaceRepository {
-    suspend fun findApproved(categoryId: Int?, search: String?, page: Int, pageSize: Int): PagedResult<Place>
+    suspend fun findApproved(categoryId: Int?, search: String?, page: Int, pageSize: Int, sortBy: String? = null): PagedResult<Place>
     suspend fun findById(id: UUID): Place?
     suspend fun findByUploader(userId: UUID): List<Place>
     suspend fun findPending(): List<Place>
@@ -51,7 +51,7 @@ interface PlaceRepository {
 class PlaceRepositoryImpl : PlaceRepository {
 
     override suspend fun findApproved(
-        categoryId: Int?, search: String?, page: Int, pageSize: Int
+        categoryId: Int?, search: String?, page: Int, pageSize: Int, sortBy: String?
     ): PagedResult<Place> = newSuspendedTransaction {
         var query = PlacesTable.select { PlacesTable.status eq PlaceStatus.APPROVED }
         categoryId?.let { cid ->
@@ -62,8 +62,10 @@ class PlaceRepositoryImpl : PlaceRepository {
         }
         val total = query.count()
         val offset = ((page - 1) * pageSize).toLong()
-        val items = query
-            .orderBy(PlacesTable.createdAt, SortOrder.DESC)
+        val items = when (sortBy) {
+            "name" -> query.orderBy(PlacesTable.name, SortOrder.ASC)
+            else   -> query.orderBy(PlacesTable.createdAt, SortOrder.DESC)
+        }
             .limit(pageSize, offset)
             .map { it.toPlace() }
         PagedResult(items, total)

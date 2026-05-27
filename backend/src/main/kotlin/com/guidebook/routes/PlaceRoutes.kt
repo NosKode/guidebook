@@ -23,9 +23,10 @@ fun Route.placeRoutes(placeService: PlaceService, authService: AuthService) {
         get {
             val categoryId = call.request.queryParameters["category"]?.toIntOrNull()
             val search     = call.request.queryParameters["search"]
+            val sortBy     = call.request.queryParameters["sortBy"]
             val page       = call.request.queryParameters["page"]?.toIntOrNull()?.coerceAtLeast(1) ?: 1
             val pageSize   = call.request.queryParameters["pageSize"]?.toIntOrNull()?.coerceIn(1, 100) ?: 20
-            call.respond(HttpStatusCode.OK, placeService.getApprovedPlaces(categoryId, search, page, pageSize))
+            call.respond(HttpStatusCode.OK, placeService.getApprovedPlaces(categoryId, search, page, pageSize, sortBy))
         }
 
         authenticate("auth-jwt") {

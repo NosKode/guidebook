@@ -6,7 +6,7 @@ import com.guidebook.app.domain.model.Place
 import java.io.File
 
 interface PlaceRepository {
-    suspend fun getPlaces(page: Int, pageSize: Int, categoryId: Int? = null, search: String? = null): ApiResult<PagedData<Place>>
+    suspend fun getPlaces(page: Int, pageSize: Int, categoryId: Int? = null, search: String? = null, sortBy: String? = null): ApiResult<PagedData<Place>>
     suspend fun getPlaceById(id: String): ApiResult<Place>
     suspend fun searchPlaces(query: String, page: Int, pageSize: Int): ApiResult<PagedData<Place>>
     suspend fun getMyPlaces(): ApiResult<List<Place>>
