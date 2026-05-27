@@ -1,6 +1,7 @@
 package com.guidebook.app.di
 
 import com.guidebook.app.BuildConfig
+import com.guidebook.app.data.remote.api.AdminApi
 import com.guidebook.app.data.remote.api.AuthApi
 import com.guidebook.app.data.remote.api.CategoryApi
 import com.guidebook.app.data.remote.api.FavoriteApi
@@ -70,4 +71,7 @@ object NetworkModule {
 
     @Provides @Singleton
     fun provideFavoriteApi(retrofit: Retrofit): FavoriteApi = retrofit.create(FavoriteApi::class.java)
+
+    @Provides @Singleton
+    fun provideAdminApi(retrofit: Retrofit): AdminApi = retrofit.create(AdminApi::class.java)
 }

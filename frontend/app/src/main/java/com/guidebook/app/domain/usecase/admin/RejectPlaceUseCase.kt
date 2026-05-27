@@ -8,6 +8,6 @@ import javax.inject.Inject
 class RejectPlaceUseCase @Inject constructor(
     private val repository: AdminRepository
 ) {
-    suspend operator fun invoke(placeId: String, reason: String): ApiResult<Place> =
+    suspend operator fun invoke(placeId: String, reason: String?): ApiResult<Place> =
         repository.rejectPlace(placeId, reason)
 }

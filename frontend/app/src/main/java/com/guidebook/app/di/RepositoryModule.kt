@@ -1,11 +1,13 @@
 package com.guidebook.app.di
 
+import com.guidebook.app.data.repository.AdminRepositoryImpl
 import com.guidebook.app.data.repository.AuthRepositoryImpl
 import com.guidebook.app.data.repository.CategoryRepositoryImpl
 import com.guidebook.app.data.repository.FavoriteRepositoryImpl
 import com.guidebook.app.data.repository.PhotoRepositoryImpl
 import com.guidebook.app.data.repository.PlaceRepositoryImpl
 import com.guidebook.app.data.repository.ReviewRepositoryImpl
+import com.guidebook.app.domain.repository.AdminRepository
 import com.guidebook.app.domain.repository.AuthRepository
 import com.guidebook.app.domain.repository.CategoryRepository
 import com.guidebook.app.domain.repository.FavoriteRepository
@@ -39,4 +41,7 @@ abstract class RepositoryModule {
 
     @Binds @Singleton
     abstract fun bindFavoriteRepository(impl: FavoriteRepositoryImpl): FavoriteRepository
+
+    @Binds @Singleton
+    abstract fun bindAdminRepository(impl: AdminRepositoryImpl): AdminRepository
 }
