@@ -9,6 +9,7 @@ import com.guidebook.app.data.remote.api.PhotoApi
 import com.guidebook.app.data.remote.api.PlaceApi
 import com.guidebook.app.data.remote.api.ReviewApi
 import com.guidebook.app.data.remote.interceptor.AuthInterceptor
+import com.guidebook.app.data.remote.interceptor.UnauthorizedInterceptor
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -35,11 +36,13 @@ object NetworkModule {
     @Provides
     @Singleton
     fun provideOkHttpClient(
-        authInterceptor: AuthInterceptor,
-        loggingInterceptor: HttpLoggingInterceptor
+        authInterceptor        : AuthInterceptor,
+        unauthorizedInterceptor: UnauthorizedInterceptor,
+        loggingInterceptor     : HttpLoggingInterceptor
     ): OkHttpClient =
         OkHttpClient.Builder()
             .addInterceptor(authInterceptor)
+            .addInterceptor(unauthorizedInterceptor)
             .addInterceptor(loggingInterceptor)
             .connectTimeout(30, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)

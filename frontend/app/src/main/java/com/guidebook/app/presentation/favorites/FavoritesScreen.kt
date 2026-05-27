@@ -4,12 +4,8 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -36,54 +32,83 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.guidebook.app.domain.model.Place
+import com.guidebook.app.presentation.components.EmptyState
+import com.guidebook.app.presentation.components.ErrorMessage
 import com.guidebook.app.presentation.components.PlaceCard
+import com.guidebook.app.presentation.components.ShimmerPlaceGrid
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FavoritesScreen(
-    onPlaceClick: (String) -> Unit = {},
-    viewModel: FavoritesViewModel = hiltViewModel()
+    onPlaceClick : (String) -> Unit = {},
+    viewModel    : FavoritesViewModel = hiltViewModel()
 ) {
     val favorites by viewModel.favorites.collectAsState()
+    val syncState by viewModel.syncState.collectAsState()
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = {
                     Text(
-                        text = "Избранное",
-                        style = MaterialTheme.typography.titleLarge,
+                        text       = "Избранное",
+                        style      = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold
                     )
                 }
             )
         }
     ) { padding ->
-        if (favorites.isEmpty()) {
-            EmptyFavoritesState(modifier = Modifier.padding(padding))
-        } else {
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(2),
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding),
-                contentPadding = PaddingValues(12.dp),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                items(
-                    items = favorites,
-                    key   = { it.id }
-                ) { place ->
-                    SwipeableFavoriteCard(
-                        place       = place,
-                        onPlaceClick = onPlaceClick,
-                        onRemove    = { viewModel.removeFavorite(place.id) }
-                    )
+
+        when {
+            // Первая загрузка — список ещё пуст и идёт sync
+            syncState.isLoading && favorites.isEmpty() -> {
+                ShimmerPlaceGrid(modifier = Modifier.padding(padding))
+            }
+
+            // Ошибка и кеш пустой
+            syncState.error != null && favorites.isEmpty() -> {
+                ErrorMessage(
+                    message  = syncState.error!!,
+                    onRetry  = { viewModel.syncWithServer() },
+                    modifier = Modifier.padding(padding)
+                )
+            }
+
+            // Избранных нет (кеш пуст + загрузка завершена)
+            favorites.isEmpty() -> {
+                EmptyState(
+                    icon     = Icons.Outlined.FavoriteBorder,
+                    title    = "Нет избранных мест",
+                    subtitle = "Добавьте места в избранное,\nчтобы быстро их найти",
+                    modifier = Modifier.padding(padding)
+                )
+            }
+
+            // Основной контент — список с карточками
+            else -> {
+                LazyVerticalGrid(
+                    columns               = GridCells.Fixed(2),
+                    modifier              = Modifier
+                        .fillMaxSize()
+                        .padding(padding),
+                    contentPadding        = PaddingValues(12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalArrangement   = Arrangement.spacedBy(10.dp)
+                ) {
+                    items(
+                        items = favorites,
+                        key   = { it.id }
+                    ) { place ->
+                        SwipeableFavoriteCard(
+                            place        = place,
+                            onPlaceClick = onPlaceClick,
+                            onRemove     = { viewModel.removeFavorite(place.id) }
+                        )
+                    }
                 }
             }
         }
@@ -95,9 +120,9 @@ fun FavoritesScreen(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun SwipeableFavoriteCard(
-    place: Place,
-    onPlaceClick: (String) -> Unit,
-    onRemove: () -> Unit
+    place        : Place,
+    onPlaceClick : (String) -> Unit,
+    onRemove     : () -> Unit
 ) {
     val dismissState = rememberSwipeToDismissBoxState(
         confirmValueChange = { value ->
@@ -113,7 +138,7 @@ private fun SwipeableFavoriteCard(
     }
 
     SwipeToDismissBox(
-        state                    = dismissState,
+        state                       = dismissState,
         enableDismissFromStartToEnd = false,
         enableDismissFromEndToStart = true,
         backgroundContent = {
@@ -140,7 +165,7 @@ private fun DeleteBackground(fraction: Float) {
     )
 
     Box(
-        modifier = Modifier
+        modifier         = Modifier
             .fillMaxSize()
             .clip(RoundedCornerShape(16.dp))
             .background(color),
@@ -153,39 +178,6 @@ private fun DeleteBackground(fraction: Float) {
             modifier           = Modifier
                 .padding(end = 16.dp)
                 .size(24.dp)
-        )
-    }
-}
-
-// ── Пустое состояние ─────────────────────────────────────────────────────────
-
-@Composable
-private fun EmptyFavoritesState(modifier: Modifier = Modifier) {
-    Column(
-        modifier              = modifier
-            .fillMaxSize()
-            .padding(32.dp),
-        horizontalAlignment   = Alignment.CenterHorizontally,
-        verticalArrangement   = Arrangement.Center
-    ) {
-        Icon(
-            imageVector        = Icons.Outlined.FavoriteBorder,
-            contentDescription = null,
-            modifier           = Modifier.size(80.dp),
-            tint               = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)
-        )
-        Spacer(Modifier.height(20.dp))
-        Text(
-            text       = "Нет избранных мест",
-            style      = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.SemiBold
-        )
-        Spacer(Modifier.height(8.dp))
-        Text(
-            text      = "Добавьте места в избранное,\nчтобы быстро их найти",
-            style     = MaterialTheme.typography.bodyMedium,
-            color     = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center
         )
     }
 }

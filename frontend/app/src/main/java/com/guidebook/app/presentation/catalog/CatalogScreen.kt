@@ -22,6 +22,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.outlined.SearchOff
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -54,7 +55,10 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.guidebook.app.presentation.components.EmptyState
+import com.guidebook.app.presentation.components.ErrorMessage
 import com.guidebook.app.presentation.components.PlaceCard
+import com.guidebook.app.presentation.components.ShimmerPlaceGrid
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -175,12 +179,16 @@ fun CatalogScreen(
 
             // ── Контент ──────────────────────────────────────────────────
             when {
-                state.isLoading -> FullScreenLoading()
-                state.error != null && state.places.isEmpty() -> ErrorState(
+                state.isLoading -> ShimmerPlaceGrid()
+                state.error != null && state.places.isEmpty() -> ErrorMessage(
                     message = state.error!!,
                     onRetry = { viewModel.refresh() }
                 )
-                state.places.isEmpty() -> EmptyState()
+                state.places.isEmpty() -> EmptyState(
+                    icon     = Icons.Outlined.SearchOff,
+                    title    = "Ничего не найдено",
+                    subtitle = "Попробуйте изменить запрос\nили выбрать другую категорию"
+                )
                 else -> PlacesList(
                     state = state,
                     onPlaceClick = onPlaceClick,
@@ -276,77 +284,3 @@ private fun PlacesList(
     }
 }
 
-// ── Вспомогательные состояния ────────────────────────────────────────────────
-
-@Composable
-private fun FullScreenLoading() {
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
-    ) {
-        CircularProgressIndicator()
-    }
-}
-
-@Composable
-private fun EmptyState() {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(32.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Text(
-                text = "🔍",
-                style = MaterialTheme.typography.displayMedium
-            )
-            Text(
-                text = "Ничего не найдено",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold
-            )
-            Text(
-                text = "Попробуйте изменить запрос или выбрать другую категорию",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-    }
-}
-
-@Composable
-private fun ErrorState(message: String, onRetry: () -> Unit) {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(32.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Text(
-                text = "😕",
-                style = MaterialTheme.typography.displayMedium
-            )
-            Text(
-                text = "Ошибка загрузки",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold
-            )
-            Text(
-                text = message,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            androidx.compose.material3.Button(onClick = onRetry) {
-                Text("Повторить")
-            }
-        }
-    }
-}
