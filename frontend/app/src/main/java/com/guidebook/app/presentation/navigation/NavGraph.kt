@@ -113,12 +113,18 @@ fun AppNavGraph() {
                 }
 
                 composable(Routes.FAVORITES) {
-                    FavoritesScreen()
+                    FavoritesScreen(
+                        onPlaceClick = { id ->
+                            navController.navigate(Routes.placeDetail(id))
+                        }
+                    )
                 }
 
                 composable(Routes.MY_PLACES) {
                     MyPlacesScreen(
-                        onAddPlace = { navController.navigate(Routes.ADD_PLACE) }
+                        onAddPlace   = { navController.navigate(Routes.ADD_PLACE) },
+                        onPlaceClick = { id -> navController.navigate(Routes.placeDetail(id)) },
+                        onAddPhoto   = { id -> navController.navigate(Routes.addPhoto(id)) }
                     )
                 }
 

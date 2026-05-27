@@ -3,6 +3,7 @@ package com.guidebook.app.presentation.auth
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.guidebook.app.data.remote.ApiResult
+import com.guidebook.app.data.remote.friendlyMessage
 import com.guidebook.app.domain.usecase.auth.RegisterUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -42,7 +43,7 @@ class RegisterViewModel @Inject constructor(
             val name = displayName.trim().ifBlank { null }
             when (val result = registerUseCase(email, password, name)) {
                 is ApiResult.Success      -> _uiState.update { it.copy(isLoading = false, isSuccess = true) }
-                is ApiResult.Error        -> _uiState.update { it.copy(isLoading = false, error = result.message) }
+                is ApiResult.Error        -> _uiState.update { it.copy(isLoading = false, error = result.friendlyMessage()) }
                 is ApiResult.NetworkError -> _uiState.update { it.copy(isLoading = false, error = "Нет подключения к интернету") }
             }
         }
