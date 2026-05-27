@@ -1,6 +1,7 @@
 package com.guidebook.app
 
 import android.app.Application
+import com.guidebook.app.BuildConfig
 import com.yandex.mapkit.MapKitFactory
 import dagger.hilt.android.HiltAndroidApp
 

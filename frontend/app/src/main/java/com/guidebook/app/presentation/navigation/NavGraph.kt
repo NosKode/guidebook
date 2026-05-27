@@ -1,6 +1,9 @@
 package com.guidebook.app.presentation.navigation
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.padding
@@ -166,7 +169,11 @@ fun AppNavGraph() {
                             nullable     = true
                             defaultValue = null
                         }
-                    )
+                    ),
+                    enterTransition    = { fadeIn(animationSpec  = tween(300)) },
+                    exitTransition     = { fadeOut(animationSpec = tween(300)) },
+                    popEnterTransition = { fadeIn(animationSpec  = tween(300)) },
+                    popExitTransition  = { fadeOut(animationSpec = tween(300)) }
                 ) { entry ->
                     val url = entry.arguments?.getString("photoUrl") ?: ""
                     PhotoViewerScreen(
