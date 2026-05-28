@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -56,12 +57,8 @@ fun FavoritesScreen(
     val favorites by viewModel.favorites.collectAsState()
     val syncState by viewModel.syncState.collectAsState()
 
-    Scaffold { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-        ) {
+    Scaffold(contentWindowInsets = WindowInsets(0)) { _ ->
+        Column(modifier = Modifier.fillMaxSize()) {
             // ── Hero header ────────────────────────────────────────────────
             Box(
                 modifier = Modifier
