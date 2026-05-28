@@ -72,6 +72,8 @@ dependencies {
     testImplementation("io.ktor:ktor-client-content-negotiation:$ktor_version")
     testImplementation("org.testcontainers:postgresql:1.19.7")
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit5:$kotlin_version")
+    testImplementation("io.mockk:mockk:1.13.11")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:$coroutines_version")
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.10.2")
 }
 
