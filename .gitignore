@@ -17,6 +17,10 @@ Thumbs.db
 # Env
 .env
 
+# Local properties (machine-specific, never commit)
+local.properties
+frontend/local.properties
+
 # Storage (локальные файлы)
 storage/images/*
 storage/avatars/*

@@ -106,17 +106,30 @@ curl http://localhost:8080/health
 
 ### 3. Android-приложение
 
-Откройте папку `docs/frontend` в **Android Studio** и запустите на устройстве или эмуляторе.
+Создайте файл `local.properties` в корне репозитория (рядом с `settings.gradle.kts`), скопировав шаблон:
 
-Для сборки APK:
+```bash
+cp local.properties.example local.properties
+```
+
+Заполните значения:
+
+```properties
+sdk.dir=/path/to/AndroidSdk          # Android Studio проставит автоматически
+BASE_URL=http://10.0.2.2:8080/       # для эмулятора; для реального устройства — IP машины
+YANDEX_MAPKIT_KEY=ваш-ключ           # https://developer.tech.yandex.ru/
+```
+
+Откройте папку `docs/frontend` в **Android Studio** — `sdk.dir` пропишется сам при открытии проекта. Затем запустите на устройстве или эмуляторе.
+
+Для сборки APK из терминала:
 ```bash
 cd docs/frontend
 .\gradlew.bat assembleDebug
 # APK: app/build/outputs/apk/debug/app-debug.apk
 ```
 
-> **Эмулятор:** базовый URL по умолчанию — `http://10.0.2.2:8080/`
-> **Реальное устройство:** задайте `BASE_URL` в `local.properties`
+> **Без ключа Яндекс.Карт** приложение соберётся и запустится, но экран карты работать не будет.
 
 ---
 

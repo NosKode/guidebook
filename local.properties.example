@@ -1,0 +1,14 @@
+## Скопируй этот файл в local.properties и заполни значения.
+## local.properties НЕ коммитится в git.
+
+# Путь к Android SDK (Android Studio проставляет автоматически)
+sdk.dir=/path/to/your/AndroidSdk
+
+# Базовый URL бэкенда
+# Эмулятор → 10.0.2.2 (loopback хоста)
+# Реальное устройство → IP твоей машины в локальной сети, например 192.168.1.100
+BASE_URL=http://10.0.2.2:8080/
+
+# Ключ Яндекс.Карт (https://developer.tech.yandex.ru/)
+# Без ключа карта не будет работать
+YANDEX_MAPKIT_KEY=your-yandex-mapkit-key
