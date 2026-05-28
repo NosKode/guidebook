@@ -109,12 +109,11 @@ fun ShimmerPlaceCard(modifier: Modifier = Modifier) {
 @Composable
 fun ShimmerPlaceGrid(modifier: Modifier = Modifier) {
     LazyVerticalGrid(
-        columns               = GridCells.Fixed(2),
-        modifier              = modifier.fillMaxSize(),
-        contentPadding        = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalArrangement   = Arrangement.spacedBy(12.dp),
-        userScrollEnabled     = false
+        columns             = GridCells.Fixed(1),
+        modifier            = modifier.fillMaxSize(),
+        contentPadding      = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+        userScrollEnabled   = false
     ) {
         items(6) {
             ShimmerPlaceCard()

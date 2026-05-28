@@ -255,12 +255,11 @@ private fun PlacesGrid(
     }
 
     LazyVerticalGrid(
-        columns               = GridCells.Fixed(2),
-        state                 = gridState,
-        contentPadding        = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalArrangement   = Arrangement.spacedBy(12.dp),
-        modifier              = Modifier.fillMaxSize()
+        columns             = GridCells.Fixed(1),
+        state               = gridState,
+        contentPadding      = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+        modifier            = Modifier.fillMaxSize()
     ) {
         items(
             items = state.places,
@@ -274,7 +273,7 @@ private fun PlacesGrid(
 
         // Индикатор загрузки следующей страницы
         if (state.isLoadingMore) {
-            item(span = { GridItemSpan(2) }) {
+            item(span = { GridItemSpan(1) }) {
                 Box(
                     modifier         = Modifier
                         .fillMaxWidth()

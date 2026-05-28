@@ -1,0 +1,31 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: guidebook_db
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: app_password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"
+
+  backend:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      DATABASE_URL: jdbc:postgresql://db:5432/guidebook_db
+      DATABASE_USER: app
+      DATABASE_PASSWORD: app_password
+      JWT_SECRET: change-me-to-long-random-secret-at-least-32-chars
+      SERVER_BASE_URL: http://localhost:8080
+      STORAGE_PATH: /app/storage
+    volumes:
+      - storage_data:/app/storage
+    depends_on:
+      - db
+
+volumes:
+  postgres_data:
+  storage_data:
