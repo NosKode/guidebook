@@ -1,5 +1,6 @@
 package com.guidebook.app.presentation.auth
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -11,19 +12,24 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Explore
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -36,6 +42,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusDirection
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -65,135 +72,208 @@ fun RegisterScreen(
 
     Scaffold(contentWindowInsets = WindowInsets(0)) { padding ->
         Box(
-            modifier         = Modifier
+            modifier = Modifier
                 .fillMaxSize()
-                .padding(padding),
-            contentAlignment = Alignment.Center
+                .padding(padding)
         ) {
+            // ── Gradient background ────────────────────────────────────────
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(320.dp)
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(
+                                MaterialTheme.colorScheme.primaryContainer,
+                                MaterialTheme.colorScheme.background
+                            )
+                        )
+                    )
+            )
+
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 24.dp)
                     .verticalScroll(rememberScrollState()),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // ── Заголовок ──────────────────────────────────────────
+                Spacer(Modifier.height(72.dp))
+
+                // ── Logo ───────────────────────────────────────────────────
+                Surface(
+                    modifier        = Modifier.size(80.dp),
+                    shape           = RoundedCornerShape(24.dp),
+                    color           = MaterialTheme.colorScheme.primary,
+                    shadowElevation = 8.dp
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector        = Icons.Filled.Explore,
+                            contentDescription = null,
+                            tint               = MaterialTheme.colorScheme.onPrimary,
+                            modifier           = Modifier.size(44.dp)
+                        )
+                    }
+                }
+
+                Spacer(Modifier.height(20.dp))
+
                 Text(
                     text       = "Путеводитель",
-                    style      = MaterialTheme.typography.headlineLarge,
-                    fontWeight = FontWeight.Bold,
-                    color      = MaterialTheme.colorScheme.primary
+                    style      = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.Bold
                 )
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(6.dp))
                 Text(
                     text  = "Создайте аккаунт",
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
-                Spacer(Modifier.height(32.dp))
+                Spacer(Modifier.height(36.dp))
 
-                // ── Поля ──────────────────────────────────────────────
-                OutlinedTextField(
-                    value         = displayName,
-                    onValueChange = { displayName = it },
-                    label         = { Text("Имя (необязательно)") },
-                    singleLine    = true,
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-                    keyboardActions = KeyboardActions(
-                        onNext = { focusManager.moveFocus(FocusDirection.Down) }
-                    ),
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                Spacer(Modifier.height(8.dp))
-
-                OutlinedTextField(
-                    value         = email,
-                    onValueChange = { email = it; viewModel.clearError() },
-                    label         = { Text("Email") },
-                    isError       = uiState.emailError != null,
-                    supportingText = { uiState.emailError?.let { Text(it) } },
-                    singleLine    = true,
-                    keyboardOptions = KeyboardOptions(
-                        keyboardType = KeyboardType.Email,
-                        imeAction    = ImeAction.Next
-                    ),
-                    keyboardActions = KeyboardActions(
-                        onNext = { focusManager.moveFocus(FocusDirection.Down) }
-                    ),
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                Spacer(Modifier.height(8.dp))
-
-                OutlinedTextField(
-                    value         = password,
-                    onValueChange = { password = it; viewModel.clearError() },
-                    label         = { Text("Пароль") },
-                    isError       = uiState.passwordError != null,
-                    supportingText = { uiState.passwordError?.let { Text(it) } },
-                    visualTransformation = if (passwordVisible)
-                        VisualTransformation.None else PasswordVisualTransformation(),
-                    trailingIcon = {
-                        IconButton(onClick = { passwordVisible = !passwordVisible }) {
-                            Icon(
-                                imageVector = if (passwordVisible)
-                                    Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
-                                contentDescription = if (passwordVisible)
-                                    "Скрыть пароль" else "Показать пароль"
-                            )
-                        }
-                    },
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(
-                        keyboardType = KeyboardType.Password,
-                        imeAction    = ImeAction.Done
-                    ),
-                    keyboardActions = KeyboardActions(
-                        onDone = {
-                            focusManager.clearFocus()
-                            viewModel.register(email, password, displayName)
-                        }
-                    ),
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                Spacer(Modifier.height(16.dp))
-
-                // ── Баннер ошибки (inline, анимированный) ─────────────
-                AuthErrorBanner(message = uiState.error)
-
-                Spacer(Modifier.height(8.dp))
-
-                // ── Кнопка регистрации ────────────────────────────────
-                Button(
-                    onClick = {
-                        focusManager.clearFocus()
-                        viewModel.register(email, password, displayName)
-                    },
-                    enabled  = !uiState.isLoading,
-                    modifier = Modifier
+                // ── Form card ──────────────────────────────────────────────
+                Surface(
+                    modifier        = Modifier
                         .fillMaxWidth()
-                        .height(52.dp)
+                        .padding(horizontal = 20.dp),
+                    shape           = RoundedCornerShape(28.dp),
+                    color           = MaterialTheme.colorScheme.surface,
+                    shadowElevation = 4.dp
                 ) {
-                    if (uiState.isLoading) {
-                        CircularProgressIndicator(
-                            modifier    = Modifier.size(20.dp),
-                            strokeWidth = 2.dp,
-                            color       = MaterialTheme.colorScheme.onPrimary
+                    Column(
+                        modifier = Modifier.padding(24.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        OutlinedTextField(
+                            value         = displayName,
+                            onValueChange = { displayName = it },
+                            label         = { Text("Имя (необязательно)") },
+                            singleLine    = true,
+                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                            keyboardActions = KeyboardActions(
+                                onNext = { focusManager.moveFocus(FocusDirection.Down) }
+                            ),
+                            shape  = RoundedCornerShape(14.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor      = MaterialTheme.colorScheme.primary,
+                                unfocusedBorderColor    = MaterialTheme.colorScheme.outline,
+                                focusedContainerColor   = MaterialTheme.colorScheme.surface,
+                                unfocusedContainerColor = MaterialTheme.colorScheme.surface
+                            ),
+                            modifier = Modifier.fillMaxWidth()
                         )
-                    } else {
-                        Text("Зарегистрироваться", fontWeight = FontWeight.SemiBold)
+
+                        OutlinedTextField(
+                            value         = email,
+                            onValueChange = { email = it; viewModel.clearError() },
+                            label         = { Text("Email") },
+                            isError       = uiState.emailError != null,
+                            supportingText = { uiState.emailError?.let { Text(it) } },
+                            singleLine    = true,
+                            keyboardOptions = KeyboardOptions(
+                                keyboardType = KeyboardType.Email,
+                                imeAction    = ImeAction.Next
+                            ),
+                            keyboardActions = KeyboardActions(
+                                onNext = { focusManager.moveFocus(FocusDirection.Down) }
+                            ),
+                            shape  = RoundedCornerShape(14.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor      = MaterialTheme.colorScheme.primary,
+                                unfocusedBorderColor    = MaterialTheme.colorScheme.outline,
+                                focusedContainerColor   = MaterialTheme.colorScheme.surface,
+                                unfocusedContainerColor = MaterialTheme.colorScheme.surface
+                            ),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+
+                        OutlinedTextField(
+                            value         = password,
+                            onValueChange = { password = it; viewModel.clearError() },
+                            label         = { Text("Пароль") },
+                            isError       = uiState.passwordError != null,
+                            supportingText = { uiState.passwordError?.let { Text(it) } },
+                            visualTransformation = if (passwordVisible)
+                                VisualTransformation.None else PasswordVisualTransformation(),
+                            trailingIcon = {
+                                IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                                    Icon(
+                                        imageVector = if (passwordVisible)
+                                            Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
+                                        contentDescription = null
+                                    )
+                                }
+                            },
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(
+                                keyboardType = KeyboardType.Password,
+                                imeAction    = ImeAction.Done
+                            ),
+                            keyboardActions = KeyboardActions(
+                                onDone = {
+                                    focusManager.clearFocus()
+                                    viewModel.register(email, password, displayName)
+                                }
+                            ),
+                            shape  = RoundedCornerShape(14.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor      = MaterialTheme.colorScheme.primary,
+                                unfocusedBorderColor    = MaterialTheme.colorScheme.outline,
+                                focusedContainerColor   = MaterialTheme.colorScheme.surface,
+                                unfocusedContainerColor = MaterialTheme.colorScheme.surface
+                            ),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+
+                        AuthErrorBanner(message = uiState.error)
+
+                        Button(
+                            onClick = {
+                                focusManager.clearFocus()
+                                viewModel.register(email, password, displayName)
+                            },
+                            enabled  = !uiState.isLoading,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(52.dp),
+                            shape  = RoundedCornerShape(14.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.primary
+                            )
+                        ) {
+                            if (uiState.isLoading) {
+                                CircularProgressIndicator(
+                                    modifier    = Modifier.size(20.dp),
+                                    strokeWidth = 2.dp,
+                                    color       = MaterialTheme.colorScheme.onPrimary
+                                )
+                            } else {
+                                Text(
+                                    text       = "Зарегистрироваться",
+                                    fontWeight = FontWeight.Bold,
+                                    style      = MaterialTheme.typography.labelLarge
+                                )
+                            }
+                        }
                     }
                 }
 
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(16.dp))
 
                 TextButton(onClick = onNavigateToLogin) {
-                    Text("Уже есть аккаунт? Войти")
+                    Text(
+                        text  = "Уже есть аккаунт? ",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text       = "Войти",
+                        color      = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.SemiBold
+                    )
                 }
+
+                Spacer(Modifier.height(32.dp))
             }
         }
     }

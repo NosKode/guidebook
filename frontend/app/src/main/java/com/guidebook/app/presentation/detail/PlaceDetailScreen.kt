@@ -23,12 +23,15 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AddAPhoto
+import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.LocationOn
+import androidx.compose.material.icons.outlined.RateReview
 import androidx.compose.material.icons.outlined.StarOutline
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -37,6 +40,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -97,8 +101,6 @@ fun PlaceDetailScreen(
     }
 }
 
-// ── Основной контент ─────────────────────────────────────────────────────────
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun DetailContent(
@@ -111,170 +113,208 @@ private fun DetailContent(
     onCreateReview: (Int, String?) -> Unit,
     onDeleteReview: (String) -> Unit
 ) {
-    val place         = state.place!!
-    val haptic        = LocalHapticFeedback.current
+    val place  = state.place!!
+    val haptic = LocalHapticFeedback.current
     var descriptionExpanded by rememberSaveable { mutableStateOf(false) }
 
     Box(modifier = Modifier.fillMaxSize()) {
 
         LazyColumn(modifier = Modifier.fillMaxSize()) {
 
-            // ── Hero-изображение ──────────────────────────────────────────
+            // ── Hero image — 4:3 for stronger visual weight ────────────────
             item {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .aspectRatio(16f / 9f)
+                        .aspectRatio(4f / 3f)
                 ) {
                     if (place.coverUrl != null) {
                         SubcomposeAsyncImage(
-                            model = place.coverUrl,
+                            model              = place.coverUrl,
                             contentDescription = place.name,
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier.fillMaxSize(),
-                            loading = { HeroPlaceholder() },
-                            error   = { HeroPlaceholder() }
+                            contentScale       = ContentScale.Crop,
+                            modifier           = Modifier.fillMaxSize(),
+                            loading            = { HeroPlaceholder() },
+                            error              = { HeroPlaceholder() }
                         )
                     } else {
                         HeroPlaceholder()
                     }
-                    // Градиент сверху для читаемости кнопок
+                    // Top gradient for controls readability
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(120.dp)
+                            .background(
+                                Brush.verticalGradient(
+                                    0f to Color.Black.copy(alpha = 0.55f),
+                                    1f to Color.Transparent
+                                )
+                            )
+                    )
+                    // Bottom gradient for title overlap
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
                             .background(
                                 Brush.verticalGradient(
-                                    0f   to Color.Black.copy(alpha = 0.55f),
-                                    0.45f to Color.Transparent,
-                                    1f   to Color.Transparent
+                                    0f    to Color.Transparent,
+                                    0.55f to Color.Transparent,
+                                    1f    to Color.Black.copy(alpha = 0.75f)
                                 )
                             )
                     )
-                }
-            }
-
-            // ── Основная информация ───────────────────────────────────────
-            item {
-                Column(modifier = Modifier.padding(16.dp)) {
-
-                    Text(
-                        text = place.name,
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold
-                    )
-
-                    if (!place.address.isNullOrBlank()) {
-                        Spacer(Modifier.height(4.dp))
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                Icons.Outlined.LocationOn,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Spacer(Modifier.width(4.dp))
-                            Text(
-                                text = place.address,
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
+                    // Title + category overlaid on hero bottom
+                    Column(
+                        modifier = Modifier
+                            .align(Alignment.BottomStart)
+                            .padding(horizontal = 20.dp, vertical = 16.dp)
+                    ) {
+                        if (!place.categoryName.isNullOrBlank()) {
+                            Surface(
+                                shape = RoundedCornerShape(100.dp),
+                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.9f)
+                            ) {
+                                Text(
+                                    text     = place.categoryName,
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                                    style    = MaterialTheme.typography.labelSmall,
+                                    color    = MaterialTheme.colorScheme.onPrimary,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
+                            Spacer(Modifier.height(6.dp))
                         }
-                    }
-
-                    if (!place.categoryName.isNullOrBlank()) {
-                        Spacer(Modifier.height(6.dp))
-                        Surface(
-                            shape = RoundedCornerShape(8.dp),
-                            color = MaterialTheme.colorScheme.secondaryContainer
-                        ) {
-                            Text(
-                                text = place.categoryName,
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.onSecondaryContainer,
-                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
-                            )
-                        }
-                    }
-
-                    Spacer(Modifier.height(12.dp))
-
-                    // Статистика: рейтинг / отзывы / фото
-                    Row(horizontalArrangement = Arrangement.spacedBy(20.dp)) {
-                        StatItem(
-                            icon  = Icons.Filled.Star,
-                            value = if (place.averageRating > 0) "%.1f".format(place.averageRating) else "—",
-                            label = "Рейтинг",
-                            tint  = Color(0xFFFFC107)
+                        Text(
+                            text       = place.name,
+                            style      = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.Bold,
+                            color      = Color.White,
+                            maxLines   = 2,
+                            overflow   = TextOverflow.Ellipsis
                         )
-                        StatItem(value = "${place.reviewsCount}", label = "Отзывов")
-                        StatItem(value = "${place.photosCount}",  label = "Фото")
-                    }
-
-                    // Кнопка «Добавить фото» — только для владельца/админа
-                    if (state.isCurrentUserOwner || state.isAdmin) {
-                        Spacer(Modifier.height(12.dp))
-                        OutlinedButton(
-                            onClick = onAddPhoto,
-                            shape   = RoundedCornerShape(8.dp)
-                        ) {
-                            Icon(
-                                Icons.Default.AddAPhoto,
-                                contentDescription = null,
-                                modifier = Modifier.size(18.dp)
-                            )
-                            Spacer(Modifier.width(6.dp))
-                            Text("Добавить фото")
+                        if (!place.address.isNullOrBlank()) {
+                            Spacer(Modifier.height(4.dp))
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Icon(
+                                    Icons.Outlined.LocationOn,
+                                    contentDescription = null,
+                                    tint     = Color.White.copy(alpha = 0.85f),
+                                    modifier = Modifier.size(14.dp)
+                                )
+                                Text(
+                                    text  = place.address,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = Color.White.copy(alpha = 0.85f),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
                         }
                     }
                 }
             }
 
-            // ── Описание ─────────────────────────────────────────────────
+            // ── Stat cards row ─────────────────────────────────────────────
+            item {
+                Row(
+                    modifier              = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    if (place.averageRating > 0) {
+                        StatCard(
+                            modifier = Modifier.weight(1f),
+                            icon     = Icons.Filled.Star,
+                            iconTint = Color(0xFFF59E0B),
+                            value    = "%.1f".format(place.averageRating),
+                            label    = "Рейтинг"
+                        )
+                    }
+                    StatCard(
+                        modifier = Modifier.weight(1f),
+                        icon     = Icons.Outlined.RateReview,
+                        value    = "${place.reviewsCount}",
+                        label    = "Отзывов"
+                    )
+                    StatCard(
+                        modifier = Modifier.weight(1f),
+                        icon     = Icons.Filled.CameraAlt,
+                        value    = "${place.photosCount}",
+                        label    = "Фото"
+                    )
+                }
+            }
+
+            // ── Add photo button ───────────────────────────────────────────
+            if (state.isCurrentUserOwner || state.isAdmin) {
+                item {
+                    OutlinedButton(
+                        onClick  = onAddPhoto,
+                        shape    = RoundedCornerShape(14.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp)
+                    ) {
+                        Icon(Icons.Default.AddAPhoto, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text("Добавить фото")
+                    }
+                    Spacer(Modifier.height(8.dp))
+                }
+            }
+
+            // ── Description ────────────────────────────────────────────────
             if (!place.description.isNullOrBlank()) {
                 item {
                     HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
-                    Column(modifier = Modifier.padding(16.dp)) {
+                    Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp)) {
                         Text(
-                            text = "Описание",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold
+                            text       = "Описание",
+                            style      = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold
                         )
                         Spacer(Modifier.height(8.dp))
                         Text(
-                            text = place.description,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            text     = place.description,
+                            style    = MaterialTheme.typography.bodyMedium,
+                            color    = MaterialTheme.colorScheme.onSurfaceVariant,
                             maxLines = if (descriptionExpanded) Int.MAX_VALUE else 4,
                             overflow = TextOverflow.Ellipsis
                         )
                         if (place.description.length > 200) {
+                            Spacer(Modifier.height(6.dp))
                             Text(
-                                text = if (descriptionExpanded) "Свернуть" else "Показать полностью",
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier
-                                    .padding(top = 4.dp)
-                                    .clickable { descriptionExpanded = !descriptionExpanded }
+                                text     = if (descriptionExpanded) "Свернуть" else "Читать далее",
+                                style    = MaterialTheme.typography.labelMedium,
+                                color    = MaterialTheme.colorScheme.primary,
+                                fontWeight = FontWeight.SemiBold,
+                                modifier = Modifier.clickable { descriptionExpanded = !descriptionExpanded }
                             )
                         }
                     }
                 }
             }
 
-            // ── Фотографии ────────────────────────────────────────────────
+            // ── Photos ─────────────────────────────────────────────────────
             if (state.photos.isNotEmpty()) {
                 item {
                     HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
-                    Column(modifier = Modifier.padding(vertical = 12.dp)) {
+                    Column(modifier = Modifier.padding(vertical = 16.dp)) {
                         Text(
-                            text = "Фотографии",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold,
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                            text       = "Фотографии",
+                            style      = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                            modifier   = Modifier.padding(horizontal = 20.dp)
                         )
+                        Spacer(Modifier.height(12.dp))
                         LazyRow(
-                            contentPadding = PaddingValues(horizontal = 16.dp),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            contentPadding        = PaddingValues(horizontal = 16.dp),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
                             items(state.photos) { photo ->
                                 PhotoThumbnail(
@@ -287,18 +327,18 @@ private fun DetailContent(
                 }
             }
 
-            // ── Заголовок секции отзывов ──────────────────────────────────
+            // ── Reviews section header ─────────────────────────────────────
             item {
                 HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
                 Text(
-                    text = "Отзывы (${state.reviews.size})",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
+                    text       = "Отзывы (${state.reviews.size})",
+                    style      = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    modifier   = Modifier.padding(horizontal = 20.dp, vertical = 16.dp)
                 )
             }
 
-            // ── Форма добавления отзыва (если ещё не оставлял) ───────────
+            // ── Review form ────────────────────────────────────────────────
             if (state.currentUserReview == null) {
                 item {
                     ReviewForm(
@@ -306,21 +346,21 @@ private fun DetailContent(
                         error        = state.reviewError,
                         onSubmit     = onCreateReview
                     )
-                    Spacer(Modifier.height(8.dp))
+                    Spacer(Modifier.height(12.dp))
                 }
             }
 
-            // ── Список отзывов ────────────────────────────────────────────
+            // ── Reviews list ───────────────────────────────────────────────
             if (state.reviews.isEmpty() && state.currentUserReview == null) {
                 item {
                     Box(
-                        modifier = Modifier
+                        modifier         = Modifier
                             .fillMaxWidth()
                             .padding(32.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = "Отзывов ещё нет. Будьте первым!",
+                            text  = "Отзывов ещё нет. Будьте первым!",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -340,57 +380,57 @@ private fun DetailContent(
             item { Spacer(Modifier.height(32.dp)) }
         }
 
-        // ── TopAppBar поверх контента (прозрачный) ────────────────────────
+        // ── Overlay controls ───────────────────────────────────────────────
         TopAppBar(
             title = {},
             navigationIcon = {
                 IconButton(
-                    onClick = onBack,
+                    onClick  = onBack,
                     modifier = Modifier
-                        .padding(4.dp)
-                        .background(Color.Black.copy(alpha = 0.38f), CircleShape)
+                        .padding(8.dp)
+                        .background(Color.Black.copy(alpha = 0.35f), CircleShape)
                 ) {
                     Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                        imageVector        = Icons.AutoMirrored.Filled.ArrowBack,
                         contentDescription = "Назад",
-                        tint = Color.White
+                        tint               = Color.White
                     )
                 }
             },
             actions = {
                 IconButton(
-                    onClick = {
+                    onClick  = {
                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                         onFavorite()
                     },
-                    enabled = !state.isTogglingFavorite,
+                    enabled  = !state.isTogglingFavorite,
                     modifier = Modifier
-                        .padding(4.dp)
-                        .background(Color.Black.copy(alpha = 0.38f), CircleShape)
+                        .padding(8.dp)
+                        .background(Color.Black.copy(alpha = 0.35f), CircleShape)
                 ) {
                     if (state.isTogglingFavorite) {
                         CircularProgressIndicator(
-                            modifier = Modifier.size(20.dp),
-                            color = Color.White,
+                            modifier    = Modifier.size(20.dp),
+                            color       = Color.White,
                             strokeWidth = 2.dp
                         )
                     } else {
                         Icon(
-                            imageVector = if (state.isFavorite) Icons.Filled.Favorite
-                                          else Icons.Outlined.FavoriteBorder,
+                            imageVector        = if (state.isFavorite) Icons.Filled.Favorite
+                                                 else Icons.Outlined.FavoriteBorder,
                             contentDescription = "В избранное",
-                            tint = if (state.isFavorite) Color(0xFFEF5350) else Color.White
+                            tint               = if (state.isFavorite) Color(0xFFFF6B6B) else Color.White
                         )
                     }
                 }
             },
-            colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
+            colors   = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
             modifier = Modifier.fillMaxWidth()
         )
     }
 }
 
-// ── Форма отзыва ─────────────────────────────────────────────────────────────
+// ── Review form ───────────────────────────────────────────────────────────────
 
 @Composable
 private fun ReviewForm(
@@ -402,31 +442,31 @@ private fun ReviewForm(
     var comment by rememberSaveable { mutableStateOf("") }
 
     Surface(
-        modifier = Modifier
+        modifier       = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp),
-        shape = RoundedCornerShape(12.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant
+        shape          = RoundedCornerShape(20.dp),
+        color          = MaterialTheme.colorScheme.surfaceVariant,
+        tonalElevation = 0.dp
     ) {
         Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            modifier            = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
             Text(
-                text = "Оставить отзыв",
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.SemiBold
+                text       = "Оставить отзыв",
+                style      = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold
             )
 
-            // RatingBar — 5 кликабельных звёздочек
-            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 repeat(5) { index ->
                     Icon(
                         imageVector = if (index < selectedRating) Icons.Filled.Star
                                       else Icons.Outlined.StarOutline,
                         contentDescription = "${index + 1} звезда",
-                        tint = if (index < selectedRating) Color(0xFFFFC107)
-                               else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+                        tint = if (index < selectedRating) Color(0xFFF59E0B)
+                               else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.35f),
                         modifier = Modifier
                             .size(36.dp)
                             .clickable { selectedRating = index + 1 }
@@ -435,17 +475,29 @@ private fun ReviewForm(
             }
 
             OutlinedTextField(
-                value = comment,
+                value         = comment,
                 onValueChange = { comment = it },
-                placeholder = { Text("Комментарий (необязательно)") },
-                modifier = Modifier.fillMaxWidth(),
-                minLines = 2,
-                maxLines = 4
+                placeholder   = {
+                    Text(
+                        "Поделитесь впечатлениями...",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                },
+                modifier  = Modifier.fillMaxWidth(),
+                minLines  = 2,
+                maxLines  = 5,
+                shape     = RoundedCornerShape(14.dp),
+                colors    = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor   = MaterialTheme.colorScheme.primary,
+                    unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                    focusedContainerColor   = MaterialTheme.colorScheme.surface,
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surface
+                )
             )
 
             if (error != null) {
                 Text(
-                    text = error,
+                    text  = error,
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.error
                 )
@@ -454,36 +506,80 @@ private fun ReviewForm(
             Button(
                 onClick  = { onSubmit(selectedRating, comment.takeIf { it.isNotBlank() }) },
                 enabled  = selectedRating > 0 && !isSubmitting,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                shape    = RoundedCornerShape(14.dp),
+                colors   = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary
+                )
             ) {
                 if (isSubmitting) {
                     CircularProgressIndicator(
-                        modifier = Modifier.size(16.dp),
-                        strokeWidth = 2.dp
+                        modifier    = Modifier.size(16.dp),
+                        strokeWidth = 2.dp,
+                        color       = MaterialTheme.colorScheme.onPrimary
                     )
                 } else {
-                    Text("Отправить")
+                    Text("Отправить отзыв", fontWeight = FontWeight.SemiBold)
                 }
             }
         }
     }
 }
 
-// ── Вспомогательные компоненты ────────────────────────────────────────────────
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+@Composable
+private fun StatCard(
+    value:    String,
+    label:    String,
+    icon:     ImageVector,
+    modifier: Modifier = Modifier,
+    iconTint: Color = MaterialTheme.colorScheme.primary
+) {
+    Surface(
+        modifier       = modifier,
+        shape          = RoundedCornerShape(16.dp),
+        color          = MaterialTheme.colorScheme.surfaceVariant,
+        tonalElevation = 0.dp
+    ) {
+        Column(
+            modifier            = Modifier.padding(horizontal = 12.dp, vertical = 14.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Icon(
+                imageVector        = icon,
+                contentDescription = null,
+                tint               = iconTint,
+                modifier           = Modifier.size(22.dp)
+            )
+            Text(
+                text       = value,
+                style      = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                text  = label,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
 
 @Composable
 private fun PhotoThumbnail(photo: Photo, onClick: () -> Unit) {
     SubcomposeAsyncImage(
-        model = photo.photoUrl,
+        model              = photo.photoUrl,
         contentDescription = photo.caption,
-        contentScale = ContentScale.Crop,
-        modifier = Modifier
-            .size(100.dp)
-            .clip(RoundedCornerShape(8.dp))
+        contentScale       = ContentScale.Crop,
+        modifier           = Modifier
+            .size(110.dp)
+            .clip(RoundedCornerShape(16.dp))
             .clickable { onClick() },
         loading = {
             Box(
-                modifier = Modifier
+                Modifier
                     .fillMaxSize()
                     .background(MaterialTheme.colorScheme.surfaceVariant)
             )
@@ -497,10 +593,10 @@ private fun HeroPlaceholder() {
         modifier = Modifier
             .fillMaxSize()
             .background(
-                Brush.verticalGradient(
+                Brush.linearGradient(
                     listOf(
-                        MaterialTheme.colorScheme.primary,
-                        MaterialTheme.colorScheme.tertiary
+                        MaterialTheme.colorScheme.primaryContainer,
+                        MaterialTheme.colorScheme.secondaryContainer
                     )
                 )
             )
@@ -508,43 +604,9 @@ private fun HeroPlaceholder() {
 }
 
 @Composable
-private fun StatItem(
-    value: String,
-    label: String,
-    icon: ImageVector? = null,
-    tint: Color = MaterialTheme.colorScheme.primary
-) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        if (icon != null) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = tint,
-                modifier = Modifier.size(18.dp)
-            )
-            Spacer(Modifier.width(4.dp))
-        }
-        Column {
-            Text(
-                text = value,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
-            )
-            Text(
-                text = label,
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-    }
-}
-
-// ── Экраны-заглушки ──────────────────────────────────────────────────────────
-
-@Composable
 private fun FullScreenLoading() {
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        CircularProgressIndicator()
+        CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
     }
 }
 
@@ -561,7 +623,7 @@ private fun ErrorScreen(message: String, onRetry: () -> Unit, onBack: () -> Unit
             }
         )
         Box(
-            modifier = Modifier
+            modifier         = Modifier
                 .fillMaxSize()
                 .padding(32.dp),
             contentAlignment = Alignment.Center
@@ -572,12 +634,12 @@ private fun ErrorScreen(message: String, onRetry: () -> Unit, onBack: () -> Unit
             ) {
                 Text("😕", style = MaterialTheme.typography.displayMedium)
                 Text(
-                    text = "Не удалось загрузить",
-                    style = MaterialTheme.typography.titleMedium,
+                    text       = "Не удалось загрузить",
+                    style      = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold
                 )
                 Text(
-                    text = message,
+                    text  = message,
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

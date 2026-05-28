@@ -4,12 +4,14 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
@@ -26,18 +28,17 @@ import androidx.compose.material.icons.outlined.SearchOff
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.pulltorefresh.PullToRefreshContainer
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
@@ -70,42 +71,63 @@ fun CatalogScreen(
     val state by viewModel.uiState.collectAsState()
     var showSortMenu by remember { mutableStateOf(false) }
 
-    // ── Pull-to-refresh state живёт здесь, чтобы PullToRefreshContainer
-    //    обёртывал ВЕСЬ контент (поиск + чипы + список) и не вылезал за их пределы.
     val pullToRefreshState = rememberPullToRefreshState()
 
-    // Пользователь потянул → запускаем refresh
     if (pullToRefreshState.isRefreshing) {
         LaunchedEffect(Unit) { viewModel.refresh() }
     }
-
-    // ViewModel закончила обновлять → убираем индикатор PTR
-    // Проверяем pullToRefreshState.isRefreshing, чтобы не вызывать endRefresh() вхолостую
-    // при search/filter (которые тоже меняют state.isRefreshing, но не через жест PTR)
     LaunchedEffect(state.isRefreshing) {
         if (!state.isRefreshing && pullToRefreshState.isRefreshing) {
             pullToRefreshState.endRefresh()
         }
     }
 
-    Scaffold(
-        topBar = {
-            CenterAlignedTopAppBar(
-                title = {
-                    Text(
-                        text = "Путеводитель",
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold
-                    )
-                },
-                actions = {
-                    // ── Кнопка сортировки ────────────────────────────────────
+    Scaffold { scaffoldPadding ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(scaffoldPadding)
+                .nestedScroll(pullToRefreshState.nestedScrollConnection)
+        ) {
+            Column(modifier = Modifier.fillMaxSize()) {
+
+                // ── Hero header ───────────────────────────────────────────────
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .statusBarsPadding()
+                        .padding(horizontal = 20.dp, vertical = 16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment     = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text(
+                            text       = "Путеводитель",
+                            style      = MaterialTheme.typography.titleLarge,
+                        )
+                        Text(
+                            text  = "Открывай лучшие места",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    // Sort button
                     Box {
-                        IconButton(onClick = { showSortMenu = true }) {
-                            Icon(
-                                imageVector        = Icons.AutoMirrored.Filled.Sort,
-                                contentDescription = "Сортировка"
-                            )
+                        Surface(
+                            shape           = RoundedCornerShape(14.dp),
+                            color           = MaterialTheme.colorScheme.surfaceVariant,
+                            tonalElevation  = 0.dp
+                        ) {
+                            IconButton(
+                                onClick  = { showSortMenu = true },
+                                modifier = Modifier.size(44.dp)
+                            ) {
+                                Icon(
+                                    imageVector        = Icons.AutoMirrored.Filled.Sort,
+                                    contentDescription = "Сортировка",
+                                    tint               = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
                         }
                         DropdownMenu(
                             expanded         = showSortMenu,
@@ -137,45 +159,46 @@ fun CatalogScreen(
                             }
                         }
                     }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface
-                )
-            )
-        }
-    ) { scaffoldPadding ->
+                }
 
-        // ── Внешний Box = граница клипа для PTR-индикатора ────────────────────
-        // nestedScroll здесь → PullToRefreshContainer находится на ОДНОМ уровне
-        // со всем контентом, не уходит за пределы экрана через Column.
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(scaffoldPadding)
-                .nestedScroll(pullToRefreshState.nestedScrollConnection)
-        ) {
-            Column(modifier = Modifier.fillMaxSize()) {
-
-                // ── Поиск ────────────────────────────────────────────────────
+                // ── Search bar ────────────────────────────────────────────────
                 TextField(
                     value         = state.searchQuery,
                     onValueChange = { viewModel.search(it) },
-                    placeholder   = { Text("Поиск мест...") },
-                    leadingIcon   = { Icon(Icons.Default.Search, contentDescription = null) },
+                    placeholder   = {
+                        Text(
+                            text  = "Поиск мест...",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    },
+                    leadingIcon = {
+                        Icon(
+                            imageVector        = Icons.Default.Search,
+                            contentDescription = null,
+                            tint               = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier           = Modifier.size(20.dp)
+                        )
+                    },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp)
-                        .clip(RoundedCornerShape(12.dp)),
+                        .padding(horizontal = 16.dp)
+                        .padding(bottom = 12.dp)
+                        .clip(RoundedCornerShape(16.dp)),
                     colors = TextFieldDefaults.colors(
-                        focusedContainerColor   = MaterialTheme.colorScheme.surfaceVariant,
-                        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-                        focusedIndicatorColor   = Color.Transparent,
-                        unfocusedIndicatorColor = Color.Transparent
+                        focusedContainerColor      = MaterialTheme.colorScheme.surfaceVariant,
+                        unfocusedContainerColor    = MaterialTheme.colorScheme.surfaceVariant,
+                        focusedIndicatorColor      = Color.Transparent,
+                        unfocusedIndicatorColor    = Color.Transparent,
+                        disabledIndicatorColor     = Color.Transparent,
+                        focusedLeadingIconColor    = MaterialTheme.colorScheme.primary,
+                        unfocusedLeadingIconColor  = MaterialTheme.colorScheme.onSurfaceVariant
                     ),
-                    singleLine = true
+                    singleLine = true,
+                    textStyle  = MaterialTheme.typography.bodyMedium
                 )
 
-                // ── Категории ────────────────────────────────────────────────
+                // ── Category chips ────────────────────────────────────────────
                 LazyRow(
                     contentPadding        = PaddingValues(horizontal = 16.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -184,21 +207,54 @@ fun CatalogScreen(
                         FilterChip(
                             selected = state.selectedCategoryId == null,
                             onClick  = { viewModel.filterByCategory(null) },
-                            label    = { Text("Все") }
+                            label    = {
+                                Text(
+                                    text       = "Все",
+                                    style      = MaterialTheme.typography.labelLarge
+                                )
+                            },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor     = MaterialTheme.colorScheme.primary,
+                                selectedLabelColor         = MaterialTheme.colorScheme.onPrimary,
+                                selectedLeadingIconColor   = MaterialTheme.colorScheme.onPrimary
+                            ),
+                            border = FilterChipDefaults.filterChipBorder(
+                                enabled              = true,
+                                selected             = state.selectedCategoryId == null,
+                                borderColor          = MaterialTheme.colorScheme.outline,
+                                selectedBorderColor  = Color.Transparent
+                            )
                         )
                     }
                     items(items = state.categories, key = { it.id }) { category ->
+                        val isSelected = state.selectedCategoryId == category.id
                         FilterChip(
-                            selected = state.selectedCategoryId == category.id,
+                            selected = isSelected,
                             onClick  = { viewModel.filterByCategory(category.id) },
-                            label    = { Text(category.name) }
+                            label    = {
+                                Text(
+                                    text  = category.name,
+                                    style = MaterialTheme.typography.labelLarge
+                                )
+                            },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor     = MaterialTheme.colorScheme.primary,
+                                selectedLabelColor         = MaterialTheme.colorScheme.onPrimary,
+                                selectedLeadingIconColor   = MaterialTheme.colorScheme.onPrimary
+                            ),
+                            border = FilterChipDefaults.filterChipBorder(
+                                enabled             = true,
+                                selected            = isSelected,
+                                borderColor         = MaterialTheme.colorScheme.outline,
+                                selectedBorderColor = Color.Transparent
+                            )
                         )
                     }
                 }
 
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(12.dp))
 
-                // ── Контент ──────────────────────────────────────────────────
+                // ── Content ───────────────────────────────────────────────────
                 when {
                     state.isLoading -> ShimmerPlaceGrid()
                     state.error != null && state.places.isEmpty() -> ErrorMessage(
@@ -218,9 +274,6 @@ fun CatalogScreen(
                 }
             }
 
-            // ── PTR-индикатор — теперь он ВНУТРИ того же Box что и весь контент.
-            //    graphicsLayer { translationY = -height } прячет его ЗА TopAppBar,
-            //    а не поверх категорий/поиска.
             PullToRefreshContainer(
                 state    = pullToRefreshState,
                 modifier = Modifier.align(Alignment.TopCenter)
@@ -229,7 +282,7 @@ fun CatalogScreen(
     }
 }
 
-// ── Сетка мест + пагинация (без PTR — он теперь выше) ───────────────────────
+// ── Places grid ───────────────────────────────────────────────────────────────
 
 @Composable
 private fun PlacesGrid(
@@ -239,7 +292,6 @@ private fun PlacesGrid(
 ) {
     val gridState = rememberLazyGridState()
 
-    // Пагинация: триггер за 4 элемента до конца
     val shouldLoadMore by remember {
         derivedStateOf {
             val info         = gridState.layoutInfo
@@ -258,21 +310,17 @@ private fun PlacesGrid(
     LazyVerticalGrid(
         columns             = GridCells.Fixed(1),
         state               = gridState,
-        contentPadding      = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        contentPadding      = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp),
         modifier            = Modifier.fillMaxSize()
     ) {
-        items(
-            items = state.places,
-            key   = { it.id }
-        ) { place ->
+        items(items = state.places, key = { it.id }) { place ->
             PlaceCard(
                 place   = place,
                 onClick = { onPlaceClick(place.id) }
             )
         }
 
-        // Индикатор загрузки следующей страницы
         if (state.isLoadingMore) {
             item(span = { GridItemSpan(1) }) {
                 Box(
@@ -281,7 +329,11 @@ private fun PlacesGrid(
                         .padding(16.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    CircularProgressIndicator(modifier = Modifier.size(32.dp))
+                    CircularProgressIndicator(
+                        modifier    = Modifier.size(28.dp),
+                        strokeWidth = 2.5.dp,
+                        color       = MaterialTheme.colorScheme.primary
+                    )
                 }
             }
         }

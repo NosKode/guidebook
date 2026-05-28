@@ -1,6 +1,7 @@
 package com.guidebook.app.presentation.splash
 
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.EaseOutBack
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -11,7 +12,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Explore
 import androidx.compose.material3.CircularProgressIndicator
@@ -32,23 +33,23 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import kotlinx.coroutines.launch
 
 @Composable
 fun SplashScreen(
-    onNavigateToMain: () -> Unit,
+    onNavigateToMain:  () -> Unit,
     onNavigateToLogin: () -> Unit,
     viewModel: SplashViewModel = hiltViewModel()
 ) {
     val destination by viewModel.destination.collectAsState()
 
     val alpha = remember { Animatable(0f) }
-    val scale = remember { Animatable(0.7f) }
+    val scale = remember { Animatable(0.72f) }
 
     LaunchedEffect(Unit) {
-        alpha.animateTo(1f, animationSpec = tween(700))
-        scale.animateTo(1f, animationSpec = tween(700))
+        launch { alpha.animateTo(1f, animationSpec = tween(500)) }
+        scale.animateTo(1f, animationSpec = tween(600, easing = EaseOutBack))
     }
 
     LaunchedEffect(destination) {
@@ -64,61 +65,60 @@ fun SplashScreen(
             .fillMaxSize()
             .background(
                 Brush.verticalGradient(
-                    colors = listOf(
-                        MaterialTheme.colorScheme.primary,
-                        MaterialTheme.colorScheme.secondary
-                    )
+                    0f   to MaterialTheme.colorScheme.primaryContainer,
+                    0.4f to MaterialTheme.colorScheme.background,
+                    1f   to MaterialTheme.colorScheme.background
                 )
             ),
         contentAlignment = Alignment.Center
     ) {
         Column(
-            modifier = Modifier
+            modifier            = Modifier
                 .alpha(alpha.value)
                 .scale(scale.value),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
             Surface(
-                modifier = Modifier.size(100.dp),
-                shape = CircleShape,
-                color = Color.White.copy(alpha = 0.2f)
+                modifier        = Modifier.size(100.dp),
+                shape           = RoundedCornerShape(28.dp),
+                color           = MaterialTheme.colorScheme.primary,
+                shadowElevation = 16.dp
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
-                        imageVector = Icons.Filled.Explore,
+                        imageVector        = Icons.Filled.Explore,
                         contentDescription = null,
-                        modifier = Modifier.size(56.dp),
-                        tint = Color.White
+                        modifier           = Modifier.size(56.dp),
+                        tint               = MaterialTheme.colorScheme.onPrimary
                     )
                 }
             }
 
-            Spacer(Modifier.height(24.dp))
+            Spacer(Modifier.height(28.dp))
 
             Text(
-                text = "Путеводитель",
-                style = MaterialTheme.typography.displaySmall,
+                text       = "Путеводитель",
+                style      = MaterialTheme.typography.displaySmall,
                 fontWeight = FontWeight.Bold,
-                color = Color.White
+                color      = MaterialTheme.colorScheme.onBackground
             )
 
             Spacer(Modifier.height(8.dp))
 
             Text(
-                text = "Открой мир вокруг себя",
+                text  = "Открой мир вокруг себя",
                 style = MaterialTheme.typography.bodyLarge,
-                color = Color.White.copy(alpha = 0.8f),
-                letterSpacing = 0.5.sp
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
 
         CircularProgressIndicator(
-            modifier = Modifier
+            modifier    = Modifier
                 .align(Alignment.BottomCenter)
                 .padding(bottom = 64.dp)
                 .alpha(alpha.value),
-            color = Color.White.copy(alpha = 0.7f),
+            color       = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f),
             strokeWidth = 2.dp
         )
     }

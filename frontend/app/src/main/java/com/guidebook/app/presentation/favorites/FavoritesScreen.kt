@@ -4,16 +4,23 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.outlined.Favorite
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -22,7 +29,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -31,6 +37,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -49,70 +56,106 @@ fun FavoritesScreen(
     val favorites by viewModel.favorites.collectAsState()
     val syncState by viewModel.syncState.collectAsState()
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        text       = "Избранное",
-                        style      = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold
+    Scaffold { padding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+        ) {
+            // ── Hero header ────────────────────────────────────────────────
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(
+                                MaterialTheme.colorScheme.primaryContainer,
+                                MaterialTheme.colorScheme.background
+                            )
+                        )
+                    )
+                    .statusBarsPadding()
+                    .padding(horizontal = 20.dp)
+                    .padding(top = 20.dp, bottom = 20.dp)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Icon(
+                        imageVector        = Icons.Outlined.Favorite,
+                        contentDescription = null,
+                        tint               = MaterialTheme.colorScheme.primary,
+                        modifier           = Modifier.size(26.dp)
+                    )
+                    Column {
+                        Text(
+                            text       = "Избранное",
+                            style      = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.Bold
+                        )
+                        if (favorites.isNotEmpty()) {
+                            Spacer(Modifier.height(2.dp))
+                            Text(
+                                text  = "${favorites.size} ${pluralPlaces(favorites.size)}",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+            }
+
+            when {
+                syncState.isLoading && favorites.isEmpty() -> {
+                    ShimmerPlaceGrid()
+                }
+
+                syncState.error != null && favorites.isEmpty() -> {
+                    ErrorMessage(
+                        message = syncState.error!!,
+                        onRetry = { viewModel.syncWithServer() }
                     )
                 }
-            )
-        }
-    ) { padding ->
 
-        when {
-            // Первая загрузка — список ещё пуст и идёт sync
-            syncState.isLoading && favorites.isEmpty() -> {
-                ShimmerPlaceGrid(modifier = Modifier.padding(padding))
-            }
+                favorites.isEmpty() -> {
+                    EmptyState(
+                        icon     = Icons.Outlined.FavoriteBorder,
+                        title    = "Нет избранных мест",
+                        subtitle = "Добавляйте места в избранное,\nчтобы быстро их находить"
+                    )
+                }
 
-            // Ошибка и кеш пустой
-            syncState.error != null && favorites.isEmpty() -> {
-                ErrorMessage(
-                    message  = syncState.error!!,
-                    onRetry  = { viewModel.syncWithServer() },
-                    modifier = Modifier.padding(padding)
-                )
-            }
-
-            // Избранных нет (кеш пуст + загрузка завершена)
-            favorites.isEmpty() -> {
-                EmptyState(
-                    icon     = Icons.Outlined.FavoriteBorder,
-                    title    = "Нет избранных мест",
-                    subtitle = "Добавьте места в избранное,\nчтобы быстро их найти",
-                    modifier = Modifier.padding(padding)
-                )
-            }
-
-            // Основной контент — список с карточками
-            else -> {
-                LazyVerticalGrid(
-                    columns               = GridCells.Fixed(2),
-                    modifier              = Modifier
-                        .fillMaxSize()
-                        .padding(padding),
-                    contentPadding        = PaddingValues(12.dp),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    verticalArrangement   = Arrangement.spacedBy(10.dp)
-                ) {
-                    items(
-                        items = favorites,
-                        key   = { it.id }
-                    ) { place ->
-                        SwipeableFavoriteCard(
-                            place        = place,
-                            onPlaceClick = onPlaceClick,
-                            onRemove     = { viewModel.removeFavorite(place.id) }
-                        )
+                else -> {
+                    LazyVerticalGrid(
+                        columns               = GridCells.Fixed(2),
+                        modifier              = Modifier.fillMaxSize(),
+                        contentPadding        = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalArrangement   = Arrangement.spacedBy(12.dp)
+                    ) {
+                        items(
+                            items = favorites,
+                            key   = { it.id }
+                        ) { place ->
+                            SwipeableFavoriteCard(
+                                place        = place,
+                                onPlaceClick = onPlaceClick,
+                                onRemove     = { viewModel.removeFavorite(place.id) }
+                            )
+                        }
                     }
                 }
             }
         }
     }
+}
+
+private fun pluralPlaces(count: Int): String = when {
+    count % 100 in 11..19 -> "мест"
+    count % 10 == 1        -> "место"
+    count % 10 in 2..4     -> "места"
+    else                   -> "мест"
 }
 
 // ── Карточка со свайпом ──────────────────────────────────────────────────────
@@ -130,7 +173,6 @@ private fun SwipeableFavoriteCard(
         }
     )
 
-    // Запускаем удаление, когда свайп завершён
     LaunchedEffect(dismissState.currentValue) {
         if (dismissState.currentValue == SwipeToDismissBoxValue.EndToStart) {
             onRemove()
@@ -167,7 +209,7 @@ private fun DeleteBackground(fraction: Float) {
     Box(
         modifier         = Modifier
             .fillMaxSize()
-            .clip(RoundedCornerShape(16.dp))
+            .clip(RoundedCornerShape(20.dp))
             .background(color),
         contentAlignment = Alignment.CenterEnd
     ) {

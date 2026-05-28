@@ -4,7 +4,9 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
@@ -40,6 +42,10 @@ private val bottomBarRoutes = setOf(
     Routes.CATALOG, Routes.MAP, Routes.FAVORITES, Routes.MY_PLACES, Routes.PROFILE
 )
 
+// Transition specs
+private const val FADE_DURATION   = 220
+private const val SLIDE_FRACTION  = 8 // denominator for subtle slide offset
+
 @Composable
 fun AppNavGraph() {
     val navController  = rememberNavController()
@@ -47,7 +53,6 @@ fun AppNavGraph() {
     val currentRoute   = backStackEntry?.destination?.route
     val showBottomBar  = currentRoute in bottomBarRoutes
 
-    // Глобальный обработчик 401 — сессия истекла → на Login
     LaunchedEffect(Unit) {
         AuthEventBus.unauthorizedEvent.collect {
             navController.navigate(Routes.AUTH_GRAPH) {
@@ -60,25 +65,34 @@ fun AppNavGraph() {
         bottomBar = {
             AnimatedVisibility(
                 visible = showBottomBar,
-                enter   = slideInVertically { it },
-                exit    = slideOutVertically { it }
+                enter   = slideInVertically { it } + fadeIn(tween(200)),
+                exit    = slideOutVertically { it } + fadeOut(tween(200))
             ) {
                 BottomNavBar(navController = navController)
             }
         }
     ) { paddingValues ->
         NavHost(
-            navController    = navController,
-            startDestination = Routes.AUTH_GRAPH,
-            modifier         = Modifier.padding(paddingValues)
+            navController       = navController,
+            startDestination    = Routes.AUTH_GRAPH,
+            modifier            = Modifier.padding(paddingValues),
+            // Default transitions — subtle horizontal slide + fade
+            enterTransition     = { fadeIn(tween(FADE_DURATION)) + slideInHorizontally { it / SLIDE_FRACTION } },
+            exitTransition      = { fadeOut(tween(FADE_DURATION - 40)) + slideOutHorizontally { -it / SLIDE_FRACTION } },
+            popEnterTransition  = { fadeIn(tween(FADE_DURATION)) + slideInHorizontally { -it / SLIDE_FRACTION } },
+            popExitTransition   = { fadeOut(tween(FADE_DURATION - 40)) + slideOutHorizontally { it / SLIDE_FRACTION } }
         ) {
 
-            // ── Auth Graph ──────────────────────────────────────────────
+            // ── Auth Graph ──────────────────────────────────────────────────
             navigation(
                 route            = Routes.AUTH_GRAPH,
                 startDestination = Routes.SPLASH
             ) {
-                composable(Routes.SPLASH) {
+                composable(
+                    route          = Routes.SPLASH,
+                    enterTransition = { fadeIn(tween(400)) },
+                    exitTransition  = { fadeOut(tween(300)) }
+                ) {
                     SplashScreen(
                         onNavigateToMain = {
                             navController.navigate(Routes.MAIN_GRAPH) {
@@ -116,31 +130,47 @@ fun AppNavGraph() {
                 }
             }
 
-            // ── Main Graph ──────────────────────────────────────────────
+            // ── Main Graph ──────────────────────────────────────────────────
             navigation(
                 route            = Routes.MAIN_GRAPH,
                 startDestination = Routes.CATALOG
             ) {
-                composable(Routes.CATALOG) {
+                // Bottom nav tabs — fade only (no slide, feels like tabs)
+                composable(
+                    route          = Routes.CATALOG,
+                    enterTransition = { fadeIn(tween(FADE_DURATION)) },
+                    exitTransition  = { fadeOut(tween(FADE_DURATION)) }
+                ) {
                     CatalogScreen(
                         onPlaceClick = { id -> navController.navigate(Routes.placeDetail(id)) }
                     )
                 }
 
-                // ── Карта ─────────────────────────────────────────────
-                composable(Routes.MAP) {
+                composable(
+                    route          = Routes.MAP,
+                    enterTransition = { fadeIn(tween(FADE_DURATION)) },
+                    exitTransition  = { fadeOut(tween(FADE_DURATION)) }
+                ) {
                     MapScreen(
                         onPlaceClick = { id -> navController.navigate(Routes.placeDetail(id)) }
                     )
                 }
 
-                composable(Routes.FAVORITES) {
+                composable(
+                    route          = Routes.FAVORITES,
+                    enterTransition = { fadeIn(tween(FADE_DURATION)) },
+                    exitTransition  = { fadeOut(tween(FADE_DURATION)) }
+                ) {
                     FavoritesScreen(
                         onPlaceClick = { id -> navController.navigate(Routes.placeDetail(id)) }
                     )
                 }
 
-                composable(Routes.MY_PLACES) {
+                composable(
+                    route          = Routes.MY_PLACES,
+                    enterTransition = { fadeIn(tween(FADE_DURATION)) },
+                    exitTransition  = { fadeOut(tween(FADE_DURATION)) }
+                ) {
                     MyPlacesScreen(
                         onAddPlace   = { navController.navigate(Routes.ADD_PLACE) },
                         onPlaceClick = { id -> navController.navigate(Routes.placeDetail(id)) },
@@ -148,7 +178,11 @@ fun AppNavGraph() {
                     )
                 }
 
-                composable(Routes.PROFILE) {
+                composable(
+                    route          = Routes.PROFILE,
+                    enterTransition = { fadeIn(tween(FADE_DURATION)) },
+                    exitTransition  = { fadeOut(tween(FADE_DURATION)) }
+                ) {
                     ProfileScreen(
                         onAdminPanel = { navController.navigate(Routes.ADMIN) },
                         onLogout     = {
@@ -159,6 +193,7 @@ fun AppNavGraph() {
                     )
                 }
 
+                // Detail screens — use NavHost default (horizontal slide)
                 composable(
                     route     = Routes.PLACE_DETAIL,
                     arguments = listOf(navArgument("placeId") { type = NavType.StringType })
@@ -181,10 +216,10 @@ fun AppNavGraph() {
                             defaultValue = null
                         }
                     ),
-                    enterTransition    = { fadeIn(animationSpec  = tween(300)) },
-                    exitTransition     = { fadeOut(animationSpec = tween(300)) },
-                    popEnterTransition = { fadeIn(animationSpec  = tween(300)) },
-                    popExitTransition  = { fadeOut(animationSpec = tween(300)) }
+                    enterTransition    = { fadeIn(tween(300)) },
+                    exitTransition     = { fadeOut(tween(300)) },
+                    popEnterTransition = { fadeIn(tween(300)) },
+                    popExitTransition  = { fadeOut(tween(300)) }
                 ) { entry ->
                     val url = entry.arguments?.getString("photoUrl") ?: ""
                     PhotoViewerScreen(
@@ -193,7 +228,6 @@ fun AppNavGraph() {
                     )
                 }
 
-                // ── Добавить место (с передачей координат из пикера) ───
                 composable(Routes.ADD_PLACE) { entry ->
                     val pickedLat by entry.savedStateHandle
                         .getStateFlow<Double?>("pickedLat", null)
@@ -225,7 +259,6 @@ fun AppNavGraph() {
                     AdminPanelScreen(onBack = { navController.popBackStack() })
                 }
 
-                // ── Пикер координат ────────────────────────────────────
                 composable(Routes.COORDINATE_PICKER) {
                     CoordinatePickerScreen(
                         onBack    = { navController.popBackStack() },

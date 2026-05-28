@@ -41,6 +41,7 @@ import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -347,8 +348,8 @@ fun MapScreen(
         ) {
             Card(
                 modifier  = Modifier.fillMaxWidth(),
-                shape     = RoundedCornerShape(bottomStart = 16.dp, bottomEnd = 16.dp),
-                elevation = CardDefaults.cardElevation(4.dp),
+                shape     = RoundedCornerShape(bottomStart = 20.dp, bottomEnd = 20.dp),
+                elevation = CardDefaults.cardElevation(6.dp),
                 colors    = CardDefaults.cardColors(
                     containerColor = MaterialTheme.colorScheme.surface
                 )
@@ -359,7 +360,8 @@ fun MapScreen(
                     onValueChange = { viewModel.search(it) },
                     placeholder   = { Text("Поиск мест...") },
                     leadingIcon   = {
-                        Icon(Icons.Default.Search, contentDescription = null)
+                        Icon(Icons.Default.Search, contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant)
                     },
                     trailingIcon  = if (state.searchQuery.isNotEmpty()) {
                         {
@@ -368,7 +370,9 @@ fun MapScreen(
                             }
                         }
                     } else null,
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .statusBarsPadding(),
                     colors   = TextFieldDefaults.colors(
                         focusedContainerColor   = Color.Transparent,
                         unfocusedContainerColor = Color.Transparent,
@@ -599,7 +603,7 @@ private fun PlaceBottomSheetContent(
                 modifier           = Modifier
                     .fillMaxWidth()
                     .height(200.dp)
-                    .clip(RoundedCornerShape(12.dp))
+                    .clip(RoundedCornerShape(16.dp))
             )
             Spacer(Modifier.height(16.dp))
         }
@@ -697,7 +701,11 @@ private fun PlaceBottomSheetContent(
             onClick  = onViewDetail,
             modifier = Modifier
                 .fillMaxWidth()
-                .height(50.dp)
+                .height(52.dp),
+            shape    = RoundedCornerShape(14.dp),
+            colors   = ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.primary
+            )
         ) {
             Text("Подробнее", fontWeight = FontWeight.SemiBold)
         }

@@ -1,17 +1,20 @@
 package com.guidebook.app.presentation.components
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -22,24 +25,32 @@ import androidx.compose.ui.unit.dp
 
 @Composable
 fun ErrorMessage(
-    message : String,
-    onRetry : (() -> Unit)? = null,
+    message  : String,
+    onRetry  : (() -> Unit)? = null,
     modifier : Modifier = Modifier
 ) {
     Column(
-        modifier              = modifier
+        modifier            = modifier
             .fillMaxSize()
             .padding(32.dp),
-        horizontalAlignment   = Alignment.CenterHorizontally,
-        verticalArrangement   = Arrangement.Center
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
     ) {
-        Icon(
-            imageVector        = Icons.Outlined.Warning,
-            contentDescription = null,
-            modifier           = Modifier.size(64.dp),
-            tint               = MaterialTheme.colorScheme.error
-        )
-        Spacer(Modifier.height(16.dp))
+        Surface(
+            modifier = Modifier.size(88.dp),
+            shape    = CircleShape,
+            color    = MaterialTheme.colorScheme.errorContainer
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Icon(
+                    imageVector        = Icons.Outlined.Warning,
+                    contentDescription = null,
+                    modifier           = Modifier.size(44.dp),
+                    tint               = MaterialTheme.colorScheme.error
+                )
+            }
+        }
+        Spacer(Modifier.height(20.dp))
         Text(
             text       = "Ошибка загрузки",
             style      = MaterialTheme.typography.titleMedium,

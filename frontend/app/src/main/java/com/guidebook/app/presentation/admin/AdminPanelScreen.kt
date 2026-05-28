@@ -12,9 +12,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -24,8 +26,6 @@ import androidx.compose.material.icons.outlined.AdminPanelSettings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -33,12 +33,13 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -68,62 +69,70 @@ fun AdminPanelScreen(
     val state    by viewModel.state.collectAsState()
     val snackbar = remember { SnackbarHostState() }
 
-    // Состояние диалога отклонения
     var rejectTargetId by remember { mutableStateOf<String?>(null) }
     var rejectReason   by remember { mutableStateOf("") }
 
     LaunchedEffect(state.error) {
-        state.error?.let {
-            snackbar.showSnackbar(it)
-            viewModel.clearError()
-        }
+        state.error?.let { snackbar.showSnackbar(it); viewModel.clearError() }
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Панель администратора", fontWeight = FontWeight.Bold) },
-                navigationIcon = {
+    Scaffold(snackbarHost = { SnackbarHost(snackbar) }) { padding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+        ) {
+            // ── Header ────────────────────────────────────────────────────
+            Surface(
+                modifier        = Modifier.fillMaxWidth(),
+                color           = MaterialTheme.colorScheme.surface,
+                shadowElevation = 1.dp
+            ) {
+                Row(
+                    modifier          = Modifier
+                        .fillMaxWidth()
+                        .statusBarsPadding()
+                        .padding(horizontal = 4.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Назад")
                     }
+                    Column {
+                        Text(
+                            text       = "Модерация",
+                            style      = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold
+                        )
+                        if (state.pendingPlaces.isNotEmpty()) {
+                            Text(
+                                text  = "${state.pendingPlaces.size} мест на рассмотрении",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
                 }
-            )
-        },
-        snackbarHost = { SnackbarHost(snackbar) }
-    ) { padding ->
-        when {
-            state.isLoading -> Box(
-                Modifier.fillMaxSize().padding(padding),
-                contentAlignment = Alignment.Center
-            ) { CircularProgressIndicator() }
+            }
 
-            state.pendingPlaces.isEmpty() && !state.isLoading -> EmptyModerationState(
-                modifier = Modifier.padding(padding)
-            )
+            when {
+                state.isLoading -> Box(
+                    Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+                }
 
-            else -> Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding)
-            ) {
-                // ── Счётчик ───────────────────────────────────────────────
-                Text(
-                    text     = "На модерации: ${state.pendingPlaces.size} мест",
-                    style    = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color    = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp)
-                )
+                state.pendingPlaces.isEmpty() -> EmptyModerationState()
 
-                // ── Список ─────────────────────────────────────────────────
-                LazyColumn(
-                    contentPadding      = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                else -> LazyColumn(
+                    modifier            = Modifier.fillMaxSize(),
+                    contentPadding      = PaddingValues(horizontal = 16.dp, vertical = 14.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     items(state.pendingPlaces, key = { it.id }) { place ->
                         ModerationCard(
-                            place    = place,
+                            place     = place,
                             onApprove = { viewModel.approve(place.id) },
                             onReject  = { rejectTargetId = place.id }
                         )
@@ -137,19 +146,17 @@ fun AdminPanelScreen(
     // ── Диалог отклонения ─────────────────────────────────────────────────────
     rejectTargetId?.let { targetId ->
         AlertDialog(
-            onDismissRequest = {
-                rejectTargetId = null
-                rejectReason   = ""
-            },
-            title   = { Text("Причина отклонения") },
-            text    = {
+            onDismissRequest = { rejectTargetId = null; rejectReason = "" },
+            shape  = RoundedCornerShape(24.dp),
+            title  = { Text("Причина отклонения", fontWeight = FontWeight.SemiBold) },
+            text   = {
                 Column {
                     Text(
                         text  = "Укажите причину (необязательно). Она будет показана автору.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    Spacer(Modifier.height(12.dp))
+                    Spacer(Modifier.height(14.dp))
                     OutlinedTextField(
                         value         = rejectReason,
                         onValueChange = { rejectReason = it },
@@ -157,6 +164,13 @@ fun AdminPanelScreen(
                         placeholder   = { Text("Например: недостаточно информации") },
                         minLines      = 2,
                         maxLines      = 4,
+                        shape         = RoundedCornerShape(14.dp),
+                        colors        = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor      = MaterialTheme.colorScheme.error,
+                            unfocusedBorderColor    = MaterialTheme.colorScheme.outline,
+                            focusedContainerColor   = MaterialTheme.colorScheme.surface,
+                            unfocusedContainerColor = MaterialTheme.colorScheme.surface
+                        ),
                         modifier      = Modifier.fillMaxWidth()
                     )
                 }
@@ -168,18 +182,14 @@ fun AdminPanelScreen(
                         rejectTargetId = null
                         rejectReason   = ""
                     },
+                    shape  = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.error
                     )
-                ) {
-                    Text("Отклонить")
-                }
+                ) { Text("Отклонить") }
             },
             dismissButton = {
-                TextButton(onClick = {
-                    rejectTargetId = null
-                    rejectReason   = ""
-                }) {
+                TextButton(onClick = { rejectTargetId = null; rejectReason = "" }) {
                     Text("Отмена")
                 }
             }
@@ -195,13 +205,15 @@ private fun ModerationCard(
     onApprove: () -> Unit,
     onReject:  () -> Unit
 ) {
-    Card(
-        modifier  = Modifier.fillMaxWidth(),
-        shape     = RoundedCornerShape(14.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    Surface(
+        modifier        = Modifier.fillMaxWidth(),
+        shape           = RoundedCornerShape(20.dp),
+        color           = MaterialTheme.colorScheme.surface,
+        shadowElevation = 2.dp,
+        tonalElevation  = 1.dp
     ) {
         Row(
-            modifier = Modifier.padding(10.dp),
+            modifier          = Modifier.padding(12.dp),
             verticalAlignment = Alignment.Top
         ) {
             // ── Миниатюра обложки ────────────────────────────────────────
@@ -209,7 +221,7 @@ private fun ModerationCard(
                 modifier = Modifier
                     .width(100.dp)
                     .aspectRatio(4f / 3f)
-                    .clip(RoundedCornerShape(10.dp))
+                    .clip(RoundedCornerShape(14.dp))
             ) {
                 if (place.coverUrl != null) {
                     AsyncImage(
@@ -222,13 +234,13 @@ private fun ModerationCard(
                     Box(
                         modifier         = Modifier
                             .fillMaxSize()
-                            .clip(RoundedCornerShape(10.dp)),
+                            .clip(RoundedCornerShape(14.dp)),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             imageVector        = Icons.Outlined.AdminPanelSettings,
                             contentDescription = null,
-                            tint               = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+                            tint               = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.35f),
                             modifier           = Modifier.size(32.dp)
                         )
                     }
@@ -237,7 +249,6 @@ private fun ModerationCard(
 
             Spacer(Modifier.width(12.dp))
 
-            // ── Информация + кнопки ──────────────────────────────────────
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text       = place.name,
@@ -259,50 +270,44 @@ private fun ModerationCard(
                 }
 
                 if (!place.categoryName.isNullOrBlank()) {
-                    Spacer(Modifier.height(2.dp))
-                    Text(
-                        text  = place.categoryName,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.primary
-                    )
+                    Spacer(Modifier.height(4.dp))
+                    Surface(
+                        shape = RoundedCornerShape(100.dp),
+                        color = MaterialTheme.colorScheme.primaryContainer
+                    ) {
+                        Text(
+                            text       = place.categoryName,
+                            style      = MaterialTheme.typography.labelSmall,
+                            color      = MaterialTheme.colorScheme.onPrimaryContainer,
+                            fontWeight = FontWeight.Medium,
+                            modifier   = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                        )
+                    }
                 }
 
-                Spacer(Modifier.height(10.dp))
+                Spacer(Modifier.height(12.dp))
 
-                // ── Кнопки действий ─────────────────────────────────────
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    // Одобрить — зелёный
                     Button(
-                        onClick = onApprove,
-                        colors  = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFF2E7D32)
-                        ),
+                        onClick        = onApprove,
+                        colors         = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E7D32)),
                         contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
-                        modifier = Modifier.weight(1f)
+                        shape          = RoundedCornerShape(10.dp),
+                        modifier       = Modifier.weight(1f)
                     ) {
-                        Icon(
-                            Icons.Default.Check,
-                            contentDescription = null,
-                            modifier = Modifier.size(16.dp)
-                        )
+                        Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(15.dp))
                         Spacer(Modifier.width(4.dp))
                         Text("Одобрить", style = MaterialTheme.typography.labelMedium)
                     }
 
-                    // Отклонить — красный
                     OutlinedButton(
-                        onClick = onReject,
-                        colors  = ButtonDefaults.outlinedButtonColors(
-                            contentColor = MaterialTheme.colorScheme.error
-                        ),
+                        onClick        = onReject,
+                        colors         = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
                         contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
-                        modifier = Modifier.weight(1f)
+                        shape          = RoundedCornerShape(10.dp),
+                        modifier       = Modifier.weight(1f)
                     ) {
-                        Icon(
-                            Icons.Default.Close,
-                            contentDescription = null,
-                            modifier = Modifier.size(16.dp)
-                        )
+                        Icon(Icons.Default.Close, contentDescription = null, modifier = Modifier.size(15.dp))
                         Spacer(Modifier.width(4.dp))
                         Text("Отклонить", style = MaterialTheme.typography.labelMedium)
                     }
@@ -315,22 +320,30 @@ private fun ModerationCard(
 // ── Пустое состояние ─────────────────────────────────────────────────────────
 
 @Composable
-private fun EmptyModerationState(modifier: Modifier = Modifier) {
+private fun EmptyModerationState() {
     Box(
-        modifier         = modifier.fillMaxSize(),
+        modifier         = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            Icon(
-                imageVector        = Icons.Outlined.AdminPanelSettings,
-                contentDescription = null,
-                modifier           = Modifier.size(80.dp),
-                tint               = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)
-            )
-            Spacer(Modifier.height(16.dp))
+            Surface(
+                modifier = Modifier.size(96.dp),
+                shape    = CircleShape,
+                color    = MaterialTheme.colorScheme.primaryContainer
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector        = Icons.Outlined.AdminPanelSettings,
+                        contentDescription = null,
+                        modifier           = Modifier.size(48.dp),
+                        tint               = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                }
+            }
+            Spacer(Modifier.height(20.dp))
             Text(
                 text       = "Нет мест на модерации",
                 style      = MaterialTheme.typography.titleMedium,
