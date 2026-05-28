@@ -3,6 +3,11 @@
 build/
 !gradle/wrapper/gradle-wrapper.jar
 
+# Compiled classes and JAR artifacts (never commit these)
+**/*.class
+META-INF/
+com/github/
+
 # IntelliJ IDEA
 .idea/
 *.iml
