@@ -20,6 +20,9 @@ import androidx.compose.material.icons.automirrored.outlined.Logout
 import androidx.compose.material.icons.filled.AdminPanelSettings
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.outlined.ChevronRight
+import androidx.compose.material.icons.outlined.DarkMode
+import androidx.compose.material.icons.outlined.LightMode
+import androidx.compose.material3.Switch
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -241,6 +244,38 @@ fun ProfileScreen(
             }
 
             Spacer(Modifier.height(28.dp))
+
+            // ── Тёмная тема ───────────────────────────────────────────────────
+            Card(
+                modifier  = Modifier.fillMaxWidth(),
+                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+            ) {
+                Row(
+                    modifier          = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector        = if (state.isDarkTheme) Icons.Outlined.DarkMode
+                                             else Icons.Outlined.LightMode,
+                        contentDescription = null,
+                        tint               = MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(Modifier.width(16.dp))
+                    Text(
+                        text     = "Тёмная тема",
+                        modifier = Modifier.weight(1f),
+                        style    = MaterialTheme.typography.bodyLarge
+                    )
+                    Switch(
+                        checked         = state.isDarkTheme,
+                        onCheckedChange = { viewModel.toggleTheme() }
+                    )
+                }
+            }
+
+            Spacer(Modifier.height(16.dp))
 
             // ── Меню (Панель администратора только для ADMIN) ─────────────────────
             if (isAdmin) {

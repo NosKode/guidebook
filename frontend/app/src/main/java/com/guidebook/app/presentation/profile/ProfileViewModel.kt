@@ -4,6 +4,7 @@ import android.content.Context
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.guidebook.app.data.local.prefs.ThemePreferences
 import com.guidebook.app.data.local.util.uriToFile
 import com.guidebook.app.data.remote.ApiResult
 import com.guidebook.app.domain.model.User
@@ -13,27 +14,43 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 data class ProfileUiState(
-    val user:            User?   = null,
-    val isLoading:       Boolean = false,
+    val user:              User?   = null,
+    val isLoading:         Boolean = false,
     val isUploadingAvatar: Boolean = false,
-    val avatarError:     String? = null
+    val avatarError:       String? = null,
+    val isDarkTheme:       Boolean = false
 )
 
 @HiltViewModel
 class ProfileViewModel @Inject constructor(
     private val authRepository: AuthRepository,
+    private val themePreferences: ThemePreferences,
     @ApplicationContext private val context: Context
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(ProfileUiState())
     val state: StateFlow<ProfileUiState> = _state.asStateFlow()
 
-    init { loadMe() }
+    init {
+        loadMe()
+        viewModelScope.launch {
+            themePreferences.isDarkTheme.collectLatest { isDark ->
+                _state.update { it.copy(isDarkTheme = isDark) }
+            }
+        }
+    }
+
+    fun toggleTheme() {
+        viewModelScope.launch {
+            themePreferences.setDarkTheme(!_state.value.isDarkTheme)
+        }
+    }
 
     private fun loadMe() {
         viewModelScope.launch {
