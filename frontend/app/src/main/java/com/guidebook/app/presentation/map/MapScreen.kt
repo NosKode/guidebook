@@ -3,9 +3,17 @@ package com.guidebook.app.presentation.map
 import android.Manifest
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
+import android.graphics.BitmapShader
 import android.graphics.Canvas
+import android.graphics.Matrix
 import android.graphics.Paint
 import android.graphics.Path
+import android.graphics.Shader
+import android.graphics.drawable.BitmapDrawable
+import coil.imageLoader
+import coil.request.ImageRequest
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
@@ -85,6 +93,17 @@ import com.yandex.mapkit.mapview.MapView
 import com.yandex.mapkit.user_location.UserLocationLayer
 import com.yandex.runtime.image.ImageProvider
 import android.graphics.PointF
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.windowInsetsTopHeight
+import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
 
 // ── Цвета категорий ──────────────────────────────────────────────────────────
 
@@ -106,49 +125,57 @@ internal val DEFAULT_MARKER_COLOR = 0xFF455A64.toInt()
 //   Anchor выставляется на кончик хвостика (0.5, 1.0), чтобы он точно
 //   указывал на координату места.
 
-internal fun createPinBitmap(color: Int, widthPx: Int): Bitmap {
-    val headRadius = widthPx / 2f
+internal fun createPinBitmap(color: Int, widthPx: Int, photo: Bitmap? = null): Bitmap {
+    val headRadius  = widthPx / 2f
     val totalHeight = (widthPx * 1.6f).toInt()
     val bmp    = Bitmap.createBitmap(widthPx, totalHeight, Bitmap.Config.ARGB_8888)
     val canvas = Canvas(bmp)
     val cx     = widthPx / 2f
-    val cy     = headRadius                  // центр головы = радиус от верха
+    val cy     = headRadius
 
     // Тень
-    val shadowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+    canvas.drawCircle(cx + 2f, cy + 2f, headRadius - 1f, Paint(Paint.ANTI_ALIAS_FLAG).apply {
         this.color = android.graphics.Color.argb(60, 0, 0, 0)
-    }
-    canvas.drawCircle(cx + 2f, cy + 2f, headRadius - 1f, shadowPaint)
+    })
 
-    // Белое кольцо
-    val whitePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+    // Белое кольцо (внешнее)
+    canvas.drawCircle(cx, cy, headRadius - 1f, Paint(Paint.ANTI_ALIAS_FLAG).apply {
         this.color = android.graphics.Color.WHITE
-    }
-    canvas.drawCircle(cx, cy, headRadius - 1f, whitePaint)
+    })
 
-    // Цветная заливка головы
-    val colorPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+    // Цветное кольцо категории
+    canvas.drawCircle(cx, cy, headRadius - 5f, Paint(Paint.ANTI_ALIAS_FLAG).apply {
         this.color = color
-    }
-    canvas.drawCircle(cx, cy, headRadius - 5f, colorPaint)
+    })
 
-    // Хвостик (треугольник)
-    val tailPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        this.color = color
-    }
-    val path = Path().apply {
-        moveTo(cx - headRadius * 0.35f, cy + headRadius * 0.7f)
-        lineTo(cx + headRadius * 0.35f, cy + headRadius * 0.7f)
-        lineTo(cx, totalHeight.toFloat() - 1f)
-        close()
-    }
-    canvas.drawPath(path, tailPaint)
+    // Хвостик
+    canvas.drawPath(
+        Path().apply {
+            moveTo(cx - headRadius * 0.35f, cy + headRadius * 0.7f)
+            lineTo(cx + headRadius * 0.35f, cy + headRadius * 0.7f)
+            lineTo(cx, totalHeight.toFloat() - 1f)
+            close()
+        },
+        Paint(Paint.ANTI_ALIAS_FLAG).apply { this.color = color }
+    )
 
-    // Белая точка в центре головы
-    val dotPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        this.color = android.graphics.Color.WHITE
+    if (photo != null && photo.width > 0 && photo.height > 0) {
+        // Фото-кружок поверх цветного кольца
+        val photoRadius  = (headRadius - 9f).coerceAtLeast(4f)
+        val photoDiameter = (photoRadius * 2).toInt()
+        val scaled = Bitmap.createScaledBitmap(photo, photoDiameter, photoDiameter, true)
+        val shader = BitmapShader(scaled, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP).also {
+            it.setLocalMatrix(Matrix().apply { setTranslate(cx - photoRadius, cy - photoRadius) })
+        }
+        canvas.drawCircle(cx, cy, photoRadius, Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            this.shader = shader
+        })
+    } else {
+        // Запасной вариант: белая точка (оригинальный дизайн)
+        canvas.drawCircle(cx, cy, headRadius * 0.22f, Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            this.color = android.graphics.Color.WHITE
+        })
     }
-    canvas.drawCircle(cx, cy, headRadius * 0.22f, dotPaint)
 
     return bmp
 }
@@ -191,8 +218,14 @@ fun MapScreen(
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
-                Lifecycle.Event.ON_START -> mapView.onStart()
-                Lifecycle.Event.ON_STOP  -> mapView.onStop()
+                Lifecycle.Event.ON_START -> {
+                    MapKitFactory.getInstance().onStart()
+                    mapView.onStart()
+                }
+                Lifecycle.Event.ON_STOP -> {
+                    mapView.onStop()
+                    MapKitFactory.getInstance().onStop()
+                }
                 else -> {}
             }
         }
@@ -238,26 +271,57 @@ fun MapScreen(
         mapView.mapWindow.map.addInputListener(mapInputListener)
     }
 
+    // ── Фокус камеры при поиске / тапе по маркеру ────────────────────────
+    LaunchedEffect(Unit) {
+        viewModel.focusEvent.collect { place ->
+            val lat = place.latitude  ?: return@collect
+            val lon = place.longitude ?: return@collect
+            mapView.mapWindow.map.move(
+                CameraPosition(Point(lat, lon), 16f, 0f, 0f),
+                com.yandex.mapkit.Animation(
+                    com.yandex.mapkit.Animation.Type.SMOOTH, 1f
+                ),
+                null
+            )
+        }
+    }
+
     // ── Обновление маркеров при смене списка мест ─────────────────────────
     LaunchedEffect(state.filteredPlaces) {
         val map = mapView.mapWindow.map
         map.mapObjects.clear()
         tapListeners.clear()
 
-        state.filteredPlaces.forEach { place ->
-            val lat   = place.latitude  ?: return@forEach
-            val lon   = place.longitude ?: return@forEach
+        // Загружаем обложки всех мест параллельно
+        val photos: List<Bitmap?> = state.filteredPlaces.map { place ->
+            async {
+                place.coverUrl?.let { url ->
+                    runCatching {
+                        (context.imageLoader.execute(
+                            ImageRequest.Builder(context)
+                                .data(url)
+                                .allowHardware(false)   // нужен software-bitmap для BitmapShader
+                                .size(pinWidthPx * 2, pinWidthPx * 2)
+                                .build()
+                        ).drawable as? BitmapDrawable)?.bitmap
+                    }.getOrNull()
+                }
+            }
+        }.awaitAll()
+
+        state.filteredPlaces.forEachIndexed { index, place ->
+            val lat   = place.latitude  ?: return@forEachIndexed
+            val lon   = place.longitude ?: return@forEachIndexed
             val color = CATEGORY_COLORS[place.categoryId] ?: DEFAULT_MARKER_COLOR
-            val bmp   = createPinBitmap(color, pinWidthPx)
+            val bmp   = createPinBitmap(color, pinWidthPx, photos[index])
 
             val pm = map.mapObjects.addPlacemark().apply { geometry = Point(lat, lon) }
             pm.setIcon(ImageProvider.fromBitmap(bmp), PIN_ICON_STYLE)
 
-            // Сохраняем слушатель — MapKit держит слабую ссылку,
-            // поэтому список tapListeners является единственным strong ref
+            // MapKit держит слабую ссылку — список tapListeners обеспечивает strong ref
             val listener = MapObjectTapListener { _, _ ->
-                viewModel.selectPlace(place)
-                true                          // событие обработано
+                viewModel.selectAndFocus(place)
+                true
             }
             pm.addTapListener(listener)
             tapListeners.add(listener)
@@ -275,41 +339,146 @@ fun MapScreen(
             modifier = Modifier.fillMaxSize()
         )
 
-        // Фильтр-чипы категорий (сверху)
-        if (state.categories.isNotEmpty()) {
-            LazyRow(
-                modifier              = Modifier
-                    .align(Alignment.TopStart)
-                    .fillMaxWidth()
-                    .padding(top = 8.dp),
-                contentPadding        = PaddingValues(horizontal = 12.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+        // Единая панель: поиск + чипы (сверху, фон уходит за статус-бар)
+        Column(
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .fillMaxWidth()
+        ) {
+            Card(
+                modifier  = Modifier.fillMaxWidth(),
+                shape     = RoundedCornerShape(bottomStart = 16.dp, bottomEnd = 16.dp),
+                elevation = CardDefaults.cardElevation(4.dp),
+                colors    = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surface
+                )
             ) {
-                item {
-                    FilterChip(
-                        selected = state.selectedCategoryId == null,
-                        onClick  = { viewModel.filterByCategory(null) },
-                        label    = { Text("Все") },
-                        colors   = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = MaterialTheme.colorScheme.primary,
-                            selectedLabelColor     = MaterialTheme.colorScheme.onPrimary
-                        )
-                    )
+                // ── Строка поиска ─────────────────────────────────────────
+                TextField(
+                    value         = state.searchQuery,
+                    onValueChange = { viewModel.search(it) },
+                    placeholder   = { Text("Поиск мест...") },
+                    leadingIcon   = {
+                        Icon(Icons.Default.Search, contentDescription = null)
+                    },
+                    trailingIcon  = if (state.searchQuery.isNotEmpty()) {
+                        {
+                            IconButton(onClick = { viewModel.search("") }) {
+                                Icon(Icons.Default.Clear, contentDescription = "Очистить")
+                            }
+                        }
+                    } else null,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors   = TextFieldDefaults.colors(
+                        focusedContainerColor   = Color.Transparent,
+                        unfocusedContainerColor = Color.Transparent,
+                        focusedIndicatorColor   = Color.Transparent,
+                        unfocusedIndicatorColor = Color.Transparent
+                    ),
+                    singleLine = true
+                )
+
+                // ── Фильтр-чипы категорий ─────────────────────────────────
+                if (state.categories.isNotEmpty()) {
+                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+                    LazyRow(
+                        modifier              = Modifier.fillMaxWidth(),
+                        contentPadding        = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        item {
+                            FilterChip(
+                                selected = state.selectedCategoryId == null,
+                                onClick  = { viewModel.filterByCategory(null) },
+                                label    = { Text("Все") },
+                                colors   = FilterChipDefaults.filterChipColors(
+                                    containerColor         = MaterialTheme.colorScheme.surfaceVariant,
+                                    labelColor             = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    selectedContainerColor = MaterialTheme.colorScheme.primary,
+                                    selectedLabelColor     = MaterialTheme.colorScheme.onPrimary
+                                )
+                            )
+                        }
+                        items(state.categories) { category ->
+                            val isSelected = state.selectedCategoryId == category.id
+                            val chipColor  = Color(CATEGORY_COLORS[category.id] ?: DEFAULT_MARKER_COLOR)
+                            FilterChip(
+                                selected = isSelected,
+                                onClick  = {
+                                    viewModel.filterByCategory(if (isSelected) null else category.id)
+                                },
+                                label  = { Text(category.name) },
+                                colors = FilterChipDefaults.filterChipColors(
+                                    containerColor         = MaterialTheme.colorScheme.surfaceVariant,
+                                    labelColor             = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    selectedContainerColor = chipColor,
+                                    selectedLabelColor     = Color.White
+                                )
+                            )
+                        }
+                    }
                 }
-                items(state.categories) { category ->
-                    val isSelected = state.selectedCategoryId == category.id
-                    val chipColor  = Color(CATEGORY_COLORS[category.id] ?: DEFAULT_MARKER_COLOR)
-                    FilterChip(
-                        selected = isSelected,
-                        onClick  = {
-                            viewModel.filterByCategory(if (isSelected) null else category.id)
-                        },
-                        label  = { Text(category.name) },
-                        colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = chipColor,
-                            selectedLabelColor     = Color.White
-                        )
+            }
+
+            // ── Выпадающий список подсказок (под панелью) ─────────────────
+            AnimatedVisibility(
+                visible = state.searchSuggestions.isNotEmpty(),
+                enter   = fadeIn(),
+                exit    = fadeOut()
+            ) {
+                Card(
+                    modifier  = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 12.dp)
+                        .padding(top = 4.dp),
+                    shape     = RoundedCornerShape(12.dp),
+                    elevation = CardDefaults.cardElevation(4.dp),
+                    colors    = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surface
                     )
+                ) {
+                    Column {
+                        state.searchSuggestions.forEachIndexed { index, place ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { viewModel.selectAndFocus(place) }
+                                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector        = Icons.Outlined.LocationOn,
+                                    contentDescription = null,
+                                    modifier           = Modifier.size(18.dp),
+                                    tint               = MaterialTheme.colorScheme.primary
+                                )
+                                Spacer(Modifier.width(12.dp))
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text       = place.name,
+                                        style      = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.Medium,
+                                        maxLines   = 1,
+                                        overflow   = TextOverflow.Ellipsis
+                                    )
+                                    if (!place.address.isNullOrBlank()) {
+                                        Text(
+                                            text     = place.address,
+                                            style    = MaterialTheme.typography.bodySmall,
+                                            color    = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                    }
+                                }
+                            }
+                            if (index < state.searchSuggestions.lastIndex) {
+                                HorizontalDivider(
+                                    modifier = Modifier.padding(horizontal = 16.dp)
+                                )
+                            }
+                        }
+                    }
                 }
             }
         }

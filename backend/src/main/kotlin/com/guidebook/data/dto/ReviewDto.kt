@@ -9,6 +9,7 @@ data class ReviewDto(
     val placeId: String,
     val userId: String,
     val userName: String?,
+    val userAvatarUrl: String?,
     val rating: Int,
     val comment: String?,
     val createdAt: String
@@ -26,11 +27,12 @@ data class ReviewUpdateRequest(
     val comment: String? = null
 )
 
-fun Review.toDto(userName: String?) = ReviewDto(
+fun Review.toDto(userName: String?, userAvatarUrl: String?) = ReviewDto(
     id = id.toString(),
     placeId = placeId.toString(),
     userId = userId.toString(),
     userName = userName,
+    userAvatarUrl = userAvatarUrl,
     rating = rating,
     comment = comment,
     createdAt = createdAt.toString()

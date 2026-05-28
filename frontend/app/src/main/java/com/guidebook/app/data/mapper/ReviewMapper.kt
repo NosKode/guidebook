@@ -8,6 +8,7 @@ fun ReviewDto.toDomain(): Review = Review(
     placeId = placeId,
     userId = userId,
     userName = userName,
+    userAvatarUrl = userAvatarUrl,
     rating = rating,
     comment = comment,
     createdAt = createdAt

@@ -34,7 +34,8 @@ class FavoritesViewModel @Inject constructor(
             initialValue = emptyList()
         )
 
-    private val _syncState = MutableStateFlow(FavoritesSyncState())
+    // isLoading=true сразу, чтобы не мигал EmptyState до первого sync
+    private val _syncState = MutableStateFlow(FavoritesSyncState(isLoading = true))
     val syncState: StateFlow<FavoritesSyncState> = _syncState.asStateFlow()
 
     init {

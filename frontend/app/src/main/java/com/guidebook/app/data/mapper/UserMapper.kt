@@ -9,5 +9,6 @@ fun UserDto.toDomain(): User = User(
     email = email,
     displayName = displayName,
     role = runCatching { UserRole.valueOf(role) }.getOrDefault(UserRole.USER),
-    createdAt = createdAt
+    createdAt = createdAt,
+    avatarUrl = avatarUrl
 )

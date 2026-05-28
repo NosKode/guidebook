@@ -32,7 +32,11 @@ object KoinModule {
         single<PhotoRepository> { PhotoRepositoryImpl() }
         single<ReviewRepository> { ReviewRepositoryImpl() }
         single<FavoriteRepository> { FavoriteRepositoryImpl() }
-        single { AuthService(get(), get()) }
+        single {
+            val baseUrl = application.environment.config
+                .propertyOrNull("server.baseUrl")?.getString() ?: "http://localhost:8080"
+            AuthService(get(), get(), get(), baseUrl)
+        }
         single { CategoryService(get()) }
         single {
             val storagePath = application.environment.config
@@ -42,23 +46,33 @@ object KoinModule {
         single {
             val baseUrl = application.environment.config
                 .propertyOrNull("server.baseUrl")?.getString() ?: "http://localhost:8080"
-            PlaceService(get(), get(), get(), baseUrl)
+            val staticMapsKey = application.environment.config
+                .propertyOrNull("yandex.staticMapsKey")?.getString() ?: ""
+            PlaceService(get(), get(), get(), baseUrl, staticMapsKey)
         }
         single {
             val baseUrl = application.environment.config
                 .propertyOrNull("server.baseUrl")?.getString() ?: "http://localhost:8080"
             PhotoService(get(), get(), get(), baseUrl)
         }
-        single { ReviewService(get(), get()) }
         single {
             val baseUrl = application.environment.config
                 .propertyOrNull("server.baseUrl")?.getString() ?: "http://localhost:8080"
-            FavoriteService(get(), get(), get(), baseUrl)
+            ReviewService(get(), get(), baseUrl)
         }
         single {
             val baseUrl = application.environment.config
                 .propertyOrNull("server.baseUrl")?.getString() ?: "http://localhost:8080"
-            ModerationService(get(), baseUrl)
+            val staticMapsKey = application.environment.config
+                .propertyOrNull("yandex.staticMapsKey")?.getString() ?: ""
+            FavoriteService(get(), get(), get(), baseUrl, staticMapsKey)
+        }
+        single {
+            val baseUrl = application.environment.config
+                .propertyOrNull("server.baseUrl")?.getString() ?: "http://localhost:8080"
+            val staticMapsKey = application.environment.config
+                .propertyOrNull("yandex.staticMapsKey")?.getString() ?: ""
+            ModerationService(get(), baseUrl, staticMapsKey)
         }
     }
 }

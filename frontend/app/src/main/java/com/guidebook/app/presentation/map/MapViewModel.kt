@@ -8,8 +8,11 @@ import com.guidebook.app.domain.model.Place
 import com.guidebook.app.domain.repository.CategoryRepository
 import com.guidebook.app.domain.repository.PlaceRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -21,6 +24,8 @@ data class MapUiState(
     val categories:         List<Category> = emptyList(),
     val selectedCategoryId: Int?           = null,
     val selectedPlace:      Place?         = null,
+    val searchQuery:        String         = "",
+    val searchSuggestions:  List<Place>    = emptyList(),
     val isLoading:          Boolean        = false,
     val error:              String?        = null
 )
@@ -33,6 +38,9 @@ class MapViewModel @Inject constructor(
 
     private val _state = MutableStateFlow(MapUiState())
     val state: StateFlow<MapUiState> = _state.asStateFlow()
+
+    private val _focusEvent = MutableSharedFlow<Place>(extraBufferCapacity = 1)
+    val focusEvent: SharedFlow<Place> = _focusEvent.asSharedFlow()
 
     init { load() }
 
@@ -74,6 +82,23 @@ class MapViewModel @Inject constructor(
                 s.allPlaces.filter { it.categoryId == categoryId }
             s.copy(selectedCategoryId = categoryId, filteredPlaces = filtered)
         }
+    }
+
+    fun search(query: String) {
+        val suggestions = if (query.isBlank()) emptyList()
+        else _state.value.allPlaces
+            .filter { it.name.contains(query, ignoreCase = true) }
+            .take(5)
+        _state.update { it.copy(searchQuery = query, searchSuggestions = suggestions) }
+    }
+
+    fun selectAndFocus(place: Place) {
+        _state.update { it.copy(
+            selectedPlace     = place,
+            searchQuery       = "",
+            searchSuggestions = emptyList()
+        ) }
+        viewModelScope.launch { _focusEvent.emit(place) }
     }
 
     fun selectPlace(place: Place?) = _state.update { it.copy(selectedPlace = place) }

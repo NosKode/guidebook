@@ -21,5 +21,6 @@ data class UserDto(
     val email: String,
     val displayName: String?,
     val role: String,
-    val createdAt: String
+    val createdAt: String,
+    val avatarUrl: String?
 )

@@ -24,8 +24,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import coil.compose.AsyncImage
 import com.guidebook.app.domain.model.Review
 
 @Composable
@@ -41,8 +43,7 @@ fun ReviewCard(
             .padding(horizontal = 16.dp, vertical = 8.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        // Аватар-заглушка
-        AvatarPlaceholder(name = review.userName)
+        UserAvatar(name = review.userName, avatarUrl = review.userAvatarUrl)
 
         Column(modifier = Modifier.weight(1f)) {
             Row(
@@ -70,7 +71,6 @@ fun ReviewCard(
                 }
             }
 
-            // Звёздочки
             Row(
                 horizontalArrangement = Arrangement.spacedBy(2.dp),
                 verticalAlignment = Alignment.CenterVertically
@@ -87,7 +87,7 @@ fun ReviewCard(
                 }
                 Spacer(Modifier.width(4.dp))
                 Text(
-                    text = review.createdAt.take(10), // yyyy-MM-dd
+                    text = review.createdAt.take(10),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -106,20 +106,37 @@ fun ReviewCard(
 }
 
 @Composable
-private fun AvatarPlaceholder(name: String?, modifier: Modifier = Modifier) {
-    val letter = name?.firstOrNull()?.uppercaseChar()?.toString() ?: "?"
+fun UserAvatar(name: String?, avatarUrl: String?, modifier: Modifier = Modifier) {
     Box(
         modifier = modifier
             .size(40.dp)
-            .clip(CircleShape)
-            .background(MaterialTheme.colorScheme.primaryContainer),
+            .clip(CircleShape),
         contentAlignment = Alignment.Center
     ) {
-        Text(
-            text = letter,
-            style = MaterialTheme.typography.titleSmall,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onPrimaryContainer
-        )
+        if (!avatarUrl.isNullOrBlank()) {
+            AsyncImage(
+                model             = avatarUrl,
+                contentDescription = name,
+                contentScale      = ContentScale.Crop,
+                modifier          = Modifier
+                    .size(40.dp)
+                    .clip(CircleShape)
+            )
+        } else {
+            val letter = name?.firstOrNull()?.uppercaseChar()?.toString() ?: "?"
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .background(MaterialTheme.colorScheme.primaryContainer),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = letter,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+            }
+        }
     }
 }

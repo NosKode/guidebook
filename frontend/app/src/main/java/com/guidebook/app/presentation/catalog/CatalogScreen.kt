@@ -69,6 +69,24 @@ fun CatalogScreen(
     val state by viewModel.uiState.collectAsState()
     var showSortMenu by remember { mutableStateOf(false) }
 
+    // ── Pull-to-refresh state живёт здесь, чтобы PullToRefreshContainer
+    //    обёртывал ВЕСЬ контент (поиск + чипы + список) и не вылезал за их пределы.
+    val pullToRefreshState = rememberPullToRefreshState()
+
+    // Пользователь потянул → запускаем refresh
+    if (pullToRefreshState.isRefreshing) {
+        LaunchedEffect(Unit) { viewModel.refresh() }
+    }
+
+    // ViewModel закончила обновлять → убираем индикатор PTR
+    // Проверяем pullToRefreshState.isRefreshing, чтобы не вызывать endRefresh() вхолостую
+    // при search/filter (которые тоже меняют state.isRefreshing, но не через жест PTR)
+    LaunchedEffect(state.isRefreshing) {
+        if (!state.isRefreshing && pullToRefreshState.isRefreshing) {
+            pullToRefreshState.endRefresh()
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -80,23 +98,23 @@ fun CatalogScreen(
                     )
                 },
                 actions = {
-                    // ── Кнопка сортировки ───────────────────────────────────
+                    // ── Кнопка сортировки ────────────────────────────────────
                     Box {
                         IconButton(onClick = { showSortMenu = true }) {
                             Icon(
-                                imageVector = Icons.AutoMirrored.Filled.Sort,
+                                imageVector        = Icons.AutoMirrored.Filled.Sort,
                                 contentDescription = "Сортировка"
                             )
                         }
                         DropdownMenu(
-                            expanded = showSortMenu,
+                            expanded         = showSortMenu,
                             onDismissRequest = { showSortMenu = false }
                         ) {
-                            SortOption.values().forEach { option ->
+                            SortOption.entries.forEach { option ->
                                 DropdownMenuItem(
                                     text = {
                                         Text(
-                                            text = option.label,
+                                            text       = option.label,
                                             fontWeight = if (state.sortOption == option)
                                                 FontWeight.SemiBold else FontWeight.Normal
                                         )
@@ -104,9 +122,9 @@ fun CatalogScreen(
                                     leadingIcon = if (state.sortOption == option) {
                                         {
                                             Icon(
-                                                imageVector = Icons.Default.Check,
+                                                imageVector        = Icons.Default.Check,
                                                 contentDescription = null,
-                                                tint = MaterialTheme.colorScheme.primary
+                                                tint               = MaterialTheme.colorScheme.primary
                                             )
                                         }
                                     } else null,
@@ -126,112 +144,109 @@ fun CatalogScreen(
         }
     ) { scaffoldPadding ->
 
-        Column(
+        // ── Внешний Box = граница клипа для PTR-индикатора ────────────────────
+        // nestedScroll здесь → PullToRefreshContainer находится на ОДНОМ уровне
+        // со всем контентом, не уходит за пределы экрана через Column.
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(scaffoldPadding)
+                .nestedScroll(pullToRefreshState.nestedScrollConnection)
         ) {
+            Column(modifier = Modifier.fillMaxSize()) {
 
-            // ── Поиск ────────────────────────────────────────────────────
-            TextField(
-                value = state.searchQuery,
-                onValueChange = { viewModel.search(it) },
-                placeholder = { Text("Поиск мест...") },
-                leadingIcon = {
-                    Icon(Icons.Default.Search, contentDescription = null)
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp)
-                    .clip(RoundedCornerShape(12.dp)),
-                colors = TextFieldDefaults.colors(
-                    focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-                    focusedIndicatorColor = Color.Transparent,
-                    unfocusedIndicatorColor = Color.Transparent
-                ),
-                singleLine = true
+                // ── Поиск ────────────────────────────────────────────────────
+                TextField(
+                    value         = state.searchQuery,
+                    onValueChange = { viewModel.search(it) },
+                    placeholder   = { Text("Поиск мест...") },
+                    leadingIcon   = { Icon(Icons.Default.Search, contentDescription = null) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                        .clip(RoundedCornerShape(12.dp)),
+                    colors = TextFieldDefaults.colors(
+                        focusedContainerColor   = MaterialTheme.colorScheme.surfaceVariant,
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                        focusedIndicatorColor   = Color.Transparent,
+                        unfocusedIndicatorColor = Color.Transparent
+                    ),
+                    singleLine = true
+                )
+
+                // ── Категории ────────────────────────────────────────────────
+                LazyRow(
+                    contentPadding        = PaddingValues(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    item {
+                        FilterChip(
+                            selected = state.selectedCategoryId == null,
+                            onClick  = { viewModel.filterByCategory(null) },
+                            label    = { Text("Все") }
+                        )
+                    }
+                    items(items = state.categories, key = { it.id }) { category ->
+                        FilterChip(
+                            selected = state.selectedCategoryId == category.id,
+                            onClick  = { viewModel.filterByCategory(category.id) },
+                            label    = { Text(category.name) }
+                        )
+                    }
+                }
+
+                Spacer(Modifier.height(8.dp))
+
+                // ── Контент ──────────────────────────────────────────────────
+                when {
+                    state.isLoading -> ShimmerPlaceGrid()
+                    state.error != null && state.places.isEmpty() -> ErrorMessage(
+                        message = state.error!!,
+                        onRetry = { viewModel.refresh() }
+                    )
+                    state.places.isEmpty() -> EmptyState(
+                        icon     = Icons.Outlined.SearchOff,
+                        title    = "Ничего не найдено",
+                        subtitle = "Попробуйте изменить запрос\nили выбрать другую категорию"
+                    )
+                    else -> PlacesGrid(
+                        state        = state,
+                        onPlaceClick = onPlaceClick,
+                        onLoadMore   = { viewModel.loadNextPage() }
+                    )
+                }
+            }
+
+            // ── PTR-индикатор — теперь он ВНУТРИ того же Box что и весь контент.
+            //    graphicsLayer { translationY = -height } прячет его ЗА TopAppBar,
+            //    а не поверх категорий/поиска.
+            PullToRefreshContainer(
+                state    = pullToRefreshState,
+                modifier = Modifier.align(Alignment.TopCenter)
             )
-
-            // ── Категории ────────────────────────────────────────────────
-            LazyRow(
-                contentPadding = PaddingValues(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                // Чип "Все"
-                item {
-                    FilterChip(
-                        selected = state.selectedCategoryId == null,
-                        onClick = { viewModel.filterByCategory(null) },
-                        label = { Text("Все") }
-                    )
-                }
-                items(items = state.categories, key = { it.id }) { category ->
-                    FilterChip(
-                        selected = state.selectedCategoryId == category.id,
-                        onClick = { viewModel.filterByCategory(category.id) },
-                        label = { Text(category.name) }
-                    )
-                }
-            }
-
-            Spacer(Modifier.height(8.dp))
-
-            // ── Контент ──────────────────────────────────────────────────
-            when {
-                state.isLoading -> ShimmerPlaceGrid()
-                state.error != null && state.places.isEmpty() -> ErrorMessage(
-                    message = state.error!!,
-                    onRetry = { viewModel.refresh() }
-                )
-                state.places.isEmpty() -> EmptyState(
-                    icon     = Icons.Outlined.SearchOff,
-                    title    = "Ничего не найдено",
-                    subtitle = "Попробуйте изменить запрос\nили выбрать другую категорию"
-                )
-                else -> PlacesList(
-                    state = state,
-                    onPlaceClick = onPlaceClick,
-                    onRefresh = { viewModel.refresh() },
-                    onLoadMore = { viewModel.loadNextPage() }
-                )
-            }
         }
     }
 }
 
-// ── Список мест (Grid + Pull-to-refresh + пагинация) ────────────────────────
+// ── Сетка мест + пагинация (без PTR — он теперь выше) ───────────────────────
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun PlacesList(
-    state: CatalogUiState,
+private fun PlacesGrid(
+    state:        CatalogUiState,
     onPlaceClick: (String) -> Unit,
-    onRefresh: () -> Unit,
-    onLoadMore: () -> Unit
+    onLoadMore:   () -> Unit
 ) {
     val gridState = rememberLazyGridState()
-    val pullToRefreshState = rememberPullToRefreshState()
 
-    // Запускаем реальный refresh, когда пользователь потянул
-    if (pullToRefreshState.isRefreshing) {
-        LaunchedEffect(true) { onRefresh() }
-    }
-
-    // Сбрасываем индикатор, когда ViewModel закончила обновление
-    LaunchedEffect(state.isRefreshing) {
-        if (!state.isRefreshing) pullToRefreshState.endRefresh()
-    }
-
-    // Определяем, достигли ли конца списка
+    // Пагинация: триггер за 4 элемента до конца
     val shouldLoadMore by remember {
         derivedStateOf {
-            val layoutInfo = gridState.layoutInfo
-            val visibleItems = layoutInfo.visibleItemsInfo
+            val info         = gridState.layoutInfo
+            val visibleItems = info.visibleItemsInfo
             if (visibleItems.isEmpty()) return@derivedStateOf false
-            val lastVisibleIndex = visibleItems.last().index
-            val totalItems = layoutInfo.totalItemsCount
-            lastVisibleIndex >= totalItems - 4 // за 4 элемента до конца
+            val lastIndex  = visibleItems.last().index
+            val totalItems = info.totalItemsCount
+            lastIndex >= totalItems - 4
         }
     }
 
@@ -239,48 +254,36 @@ private fun PlacesList(
         if (shouldLoadMore) onLoadMore()
     }
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .nestedScroll(pullToRefreshState.nestedScrollConnection)
+    LazyVerticalGrid(
+        columns               = GridCells.Fixed(2),
+        state                 = gridState,
+        contentPadding        = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement   = Arrangement.spacedBy(12.dp),
+        modifier              = Modifier.fillMaxSize()
     ) {
-        LazyVerticalGrid(
-            columns = GridCells.Fixed(2),
-            state = gridState,
-            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-            modifier = Modifier.fillMaxSize()
-        ) {
-            items(
-                items = state.places,
-                key = { it.id }
-            ) { place ->
-                PlaceCard(
-                    place = place,
-                    onClick = { onPlaceClick(place.id) }
-                )
-            }
+        items(
+            items = state.places,
+            key   = { it.id }
+        ) { place ->
+            PlaceCard(
+                place   = place,
+                onClick = { onPlaceClick(place.id) }
+            )
+        }
 
-            // Индикатор загрузки следующей страницы
-            if (state.isLoadingMore) {
-                item(span = { GridItemSpan(2) }) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressIndicator(modifier = Modifier.size(32.dp))
-                    }
+        // Индикатор загрузки следующей страницы
+        if (state.isLoadingMore) {
+            item(span = { GridItemSpan(2) }) {
+                Box(
+                    modifier         = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(modifier = Modifier.size(32.dp))
                 }
             }
         }
-
-        PullToRefreshContainer(
-            state = pullToRefreshState,
-            modifier = Modifier.align(Alignment.TopCenter)
-        )
     }
 }
-

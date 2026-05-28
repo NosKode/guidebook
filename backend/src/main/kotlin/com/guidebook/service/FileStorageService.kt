@@ -8,10 +8,19 @@ import java.util.UUID
 
 class FileStorageService(storagePath: String) {
 
-    private val imagesDir = File(storagePath, "images").also { it.mkdirs() }
-    private val photosDir = File(storagePath, "images/photos").also { it.mkdirs() }
+    private val imagesDir  = File(storagePath, "images").also { it.mkdirs() }
+    private val photosDir  = File(storagePath, "images/photos").also { it.mkdirs() }
+    private val avatarsDir = File(storagePath, "images/avatars").also { it.mkdirs() }
 
     private val maxSizeBytes = 10 * 1024 * 1024  // 10 MB
+
+    fun saveAvatar(userId: UUID, part: PartData.FileItem): String {
+        val ext = validateAndGetExtension(part)
+        val bytes = readLimited(part)
+        val filename = "$userId.$ext"
+        File(avatarsDir, filename).writeBytes(bytes)
+        return "avatars/$filename"
+    }
 
     fun saveCover(placeId: UUID, part: PartData.FileItem): String {
         val ext = validateAndGetExtension(part)

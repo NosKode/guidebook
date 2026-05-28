@@ -14,7 +14,8 @@ class FavoriteService(
     private val favoriteRepository: FavoriteRepository,
     private val placeRepository: PlaceRepository,
     private val categoryRepository: CategoryRepository,
-    private val baseUrl: String
+    private val baseUrl: String,
+    private val staticMapsKey: String = ""
 ) {
 
     suspend fun getFavorites(user: User): List<PlaceDto> =
@@ -45,7 +46,8 @@ class FavoriteService(
                 averageRating = avg,
                 reviewsCount = count,
                 photosCount = photoCounts[place.id] ?: 0,
-                baseUrl = baseUrl
+                baseUrl = baseUrl,
+                staticMapsKey = staticMapsKey
             )
         }
     }

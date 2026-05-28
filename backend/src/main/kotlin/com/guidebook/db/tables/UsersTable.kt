@@ -11,4 +11,5 @@ object UsersTable : UUIDTable("users") {
     val displayName  = varchar("display_name", 100).nullable()
     val role         = pgEnum<UserRole>("role", "user_role")
     val createdAt    = datetime("created_at").defaultExpression(CurrentDateTime)
+    val avatarPath   = varchar("avatar_path", 500).nullable()
 }

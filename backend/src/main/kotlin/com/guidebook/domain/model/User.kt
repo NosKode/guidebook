@@ -9,5 +9,6 @@ data class User(
     val passwordHash: String,
     val displayName: String?,
     val role: UserRole,
-    val createdAt: LocalDateTime
+    val createdAt: LocalDateTime,
+    val avatarPath: String?
 )

@@ -19,8 +19,13 @@ class UnauthorizedInterceptor @Inject constructor(
     override fun intercept(chain: Interceptor.Chain): Response {
         val response = chain.proceed(chain.request())
         if (response.code == 401) {
-            runBlocking { tokenStorage.clearToken() }
-            AuthEventBus.emitUnauthorized()
+            // Эмитируем только если у пользователя был токен (истекла сессия).
+            // При неверном логине токена нет — не нужно перекидывать на Login.
+            val hadToken = runBlocking { tokenStorage.getToken() != null }
+            if (hadToken) {
+                runBlocking { tokenStorage.clearToken() }
+                AuthEventBus.emitUnauthorized()
+            }
         }
         return response
     }

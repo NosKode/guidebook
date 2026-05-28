@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -137,14 +138,14 @@ private fun DetailContent(
                     } else {
                         HeroPlaceholder()
                     }
-                    // Градиент снизу для читаемости иконок TopAppBar
+                    // Градиент сверху для читаемости кнопок
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
                             .background(
                                 Brush.verticalGradient(
-                                    0f   to Color.Black.copy(alpha = 0.35f),
-                                    0.4f to Color.Transparent,
+                                    0f   to Color.Black.copy(alpha = 0.55f),
+                                    0.45f to Color.Transparent,
                                     1f   to Color.Transparent
                                 )
                             )
@@ -343,7 +344,12 @@ private fun DetailContent(
         TopAppBar(
             title = {},
             navigationIcon = {
-                IconButton(onClick = onBack) {
+                IconButton(
+                    onClick = onBack,
+                    modifier = Modifier
+                        .padding(4.dp)
+                        .background(Color.Black.copy(alpha = 0.38f), CircleShape)
+                ) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                         contentDescription = "Назад",
@@ -357,7 +363,10 @@ private fun DetailContent(
                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                         onFavorite()
                     },
-                    enabled = !state.isTogglingFavorite
+                    enabled = !state.isTogglingFavorite,
+                    modifier = Modifier
+                        .padding(4.dp)
+                        .background(Color.Black.copy(alpha = 0.38f), CircleShape)
                 ) {
                     if (state.isTogglingFavorite) {
                         CircularProgressIndicator(

@@ -8,12 +8,14 @@ import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.insertAndGetId
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
+import org.jetbrains.exposed.sql.update
 import java.util.UUID
 
 interface UserRepository {
     suspend fun findByEmail(email: String): User?
     suspend fun findById(id: UUID): User?
     suspend fun create(email: String, passwordHash: String, displayName: String?): User
+    suspend fun updateAvatar(id: UUID, avatarPath: String): User
 }
 
 class UserRepositoryImpl : UserRepository {
@@ -46,12 +48,20 @@ class UserRepositoryImpl : UserRepository {
             .toUser()
     }
 
+    override suspend fun updateAvatar(id: UUID, avatarPath: String): User = newSuspendedTransaction {
+        UsersTable.update({ UsersTable.id eq id }) {
+            it[UsersTable.avatarPath] = avatarPath
+        }
+        UsersTable.select { UsersTable.id eq id }.single().toUser()
+    }
+
     private fun ResultRow.toUser() = User(
         id = this[UsersTable.id].value,
         email = this[UsersTable.email],
         passwordHash = this[UsersTable.passwordHash],
         displayName = this[UsersTable.displayName],
         role = this[UsersTable.role],
-        createdAt = this[UsersTable.createdAt]
+        createdAt = this[UsersTable.createdAt],
+        avatarPath = this[UsersTable.avatarPath]
     )
 }

@@ -10,7 +10,7 @@ import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
 import java.util.UUID
 
-data class ReviewRow(val review: Review, val userName: String?)
+data class ReviewRow(val review: Review, val userName: String?, val userAvatarPath: String?)
 
 interface ReviewRepository {
     suspend fun findByPlace(placeId: UUID): List<ReviewRow>
@@ -30,7 +30,11 @@ class ReviewRepositoryImpl : ReviewRepository {
             .join(UsersTable, JoinType.LEFT, ReviewsTable.userId, UsersTable.id)
             .select { ReviewsTable.placeId eq EntityID(placeId, PlacesTable) }
             .orderBy(ReviewsTable.createdAt, SortOrder.DESC)
-            .map { ReviewRow(review = it.toReview(), userName = it[UsersTable.displayName]) }
+            .map { ReviewRow(
+                review = it.toReview(),
+                userName = it[UsersTable.displayName],
+                userAvatarPath = it[UsersTable.avatarPath]
+            ) }
     }
 
     override suspend fun findById(id: UUID): Review? = newSuspendedTransaction {

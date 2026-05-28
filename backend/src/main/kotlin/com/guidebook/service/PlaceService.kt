@@ -21,7 +21,8 @@ class PlaceService(
     private val placeRepository: PlaceRepository,
     private val categoryRepository: CategoryRepository,
     private val fileStorageService: FileStorageService,
-    private val baseUrl: String
+    private val baseUrl: String,
+    private val staticMapsKey: String = ""
 ) {
 
     suspend fun getApprovedPlaces(
@@ -129,7 +130,8 @@ class PlaceService(
                 averageRating = avg,
                 reviewsCount = count,
                 photosCount = photoCounts[place.id] ?: 0,
-                baseUrl = baseUrl
+                baseUrl = baseUrl,
+                staticMapsKey = staticMapsKey
             )
         }
     }
@@ -144,7 +146,8 @@ class PlaceService(
             averageRating = avg,
             reviewsCount = count,
             photosCount = photos[place.id] ?: 0,
-            baseUrl = baseUrl
+            baseUrl = baseUrl,
+            staticMapsKey = staticMapsKey
         )
     }
 }

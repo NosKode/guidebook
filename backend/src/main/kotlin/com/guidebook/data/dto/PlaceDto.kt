@@ -57,7 +57,8 @@ fun Place.toDto(
     averageRating: Double = 0.0,
     reviewsCount: Int = 0,
     photosCount: Int = 0,
-    baseUrl: String = ""
+    baseUrl: String = "",
+    staticMapsKey: String = ""
 ) = PlaceDto(
     id = id.toString(),
     name = name,
@@ -67,7 +68,21 @@ fun Place.toDto(
     categoryId = categoryId,
     categoryName = categoryName,
     description = description,
-    coverUrl = coverPath?.let { if (baseUrl.isNotEmpty()) "$baseUrl/files/images/$it" else it },
+    coverUrl = when {
+        // Если есть загруженная обложка — отдаём её
+        coverPath != null ->
+            if (baseUrl.isNotEmpty()) "$baseUrl/files/images/$coverPath" else coverPath
+        // Fallback: статический снимок карты Яндекса по координатам.
+        // v1 API требует ключ; 1.x работает без ключа (legacy, но активен).
+        latitude != null && longitude != null -> {
+            val base = if (staticMapsKey.isNotEmpty())
+                "https://static-maps.yandex.ru/v1?lang=ru_RU&ll=$longitude,$latitude&z=16&size=600,400&l=map&pt=$longitude,$latitude,pm2rdm&apikey=$staticMapsKey"
+            else
+                "https://static-maps.yandex.ru/1.x/?lang=ru_RU&ll=$longitude,$latitude&z=16&size=600,400&l=map&pt=$longitude,$latitude,pm2rdm"
+            base
+        }
+        else -> null
+    },
     uploadedBy = uploadedBy?.toString(),
     status = status.name,
     rejectionReason = rejectionReason,

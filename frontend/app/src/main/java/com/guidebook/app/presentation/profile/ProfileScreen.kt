@@ -1,6 +1,9 @@
 package com.guidebook.app.presentation.profile
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -15,23 +18,29 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Logout
 import androidx.compose.material.icons.filled.AdminPanelSettings
+import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Snackbar
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -41,10 +50,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import coil.compose.AsyncImage
 import com.guidebook.app.domain.model.UserRole
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -58,8 +69,21 @@ fun ProfileScreen(
     val user    = state.user
     val isAdmin = user?.role == UserRole.ADMIN
 
-    // Диалог подтверждения выхода
     var showLogoutDialog by remember { mutableStateOf(false) }
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    val imagePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri ->
+        uri?.let { viewModel.uploadAvatar(it) }
+    }
+
+    LaunchedEffect(state.avatarError) {
+        state.avatarError?.let {
+            snackbarHostState.showSnackbar(it)
+            viewModel.clearAvatarError()
+        }
+    }
 
     if (showLogoutDialog) {
         AlertDialog(
@@ -104,7 +128,8 @@ fun ProfileScreen(
                     }
                 }
             )
-        }
+        },
+        snackbarHost = { SnackbarHost(snackbarHostState) { data -> Snackbar(snackbarData = data) } }
     ) { padding ->
         Column(
             modifier = Modifier
@@ -117,24 +142,64 @@ fun ProfileScreen(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier          = Modifier.fillMaxWidth()
             ) {
-                // Круглый аватар с инициалом
-                val initial = (user?.displayName?.firstOrNull()
-                    ?: user?.email?.firstOrNull()
-                    ?: '?').uppercaseChar()
-
+                // Кликабельный аватар с иконкой камеры
                 Box(
                     modifier = Modifier
                         .size(80.dp)
                         .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.primaryContainer),
+                        .clickable { imagePickerLauncher.launch("image/*") },
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        text       = initial.toString(),
-                        fontSize   = 32.sp,
-                        fontWeight = FontWeight.Bold,
-                        color      = MaterialTheme.colorScheme.onPrimaryContainer
-                    )
+                    if (!user?.avatarUrl.isNullOrBlank()) {
+                        AsyncImage(
+                            model             = user!!.avatarUrl,
+                            contentDescription = "Аватар",
+                            contentScale      = ContentScale.Crop,
+                            modifier          = Modifier
+                                .size(80.dp)
+                                .clip(CircleShape)
+                        )
+                    } else {
+                        val initial = (user?.displayName?.firstOrNull()
+                            ?: user?.email?.firstOrNull()
+                            ?: '?').uppercaseChar()
+                        Box(
+                            modifier = Modifier
+                                .size(80.dp)
+                                .background(MaterialTheme.colorScheme.primaryContainer),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text       = initial.toString(),
+                                fontSize   = 32.sp,
+                                fontWeight = FontWeight.Bold,
+                                color      = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        }
+                    }
+
+                    // Иконка камеры поверх аватара
+                    Box(
+                        modifier = Modifier
+                            .size(80.dp)
+                            .background(Color.Black.copy(alpha = 0.25f), CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (state.isUploadingAvatar) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(24.dp),
+                                color    = Color.White,
+                                strokeWidth = 2.dp
+                            )
+                        } else {
+                            Icon(
+                                imageVector        = Icons.Default.CameraAlt,
+                                contentDescription = "Сменить фото",
+                                tint               = Color.White,
+                                modifier           = Modifier.size(24.dp)
+                            )
+                        }
+                    }
                 }
 
                 Spacer(Modifier.width(16.dp))
@@ -154,7 +219,6 @@ fun ProfileScreen(
                         )
                     }
                     Spacer(Modifier.height(6.dp))
-                    // Бейдж роли
                     Surface(
                         shape = MaterialTheme.shapes.small,
                         color = if (isAdmin)
@@ -178,7 +242,7 @@ fun ProfileScreen(
 
             Spacer(Modifier.height(28.dp))
 
-            // ── Меню (Панель адмна только для ADMIN) ─────────────────────
+            // ── Меню (Панель администратора только для ADMIN) ─────────────────────
             if (isAdmin) {
                 Card(
                     modifier  = Modifier.fillMaxWidth(),

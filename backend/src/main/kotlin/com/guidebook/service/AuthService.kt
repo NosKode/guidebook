@@ -11,11 +11,14 @@ import com.guidebook.domain.exception.ConflictException
 import com.guidebook.domain.exception.NotFoundException
 import com.guidebook.domain.exception.UnauthorizedException
 import com.guidebook.domain.model.User
+import io.ktor.http.content.*
 import java.util.UUID
 
 class AuthService(
     private val userRepository: UserRepository,
-    private val jwtConfig: JwtConfig
+    private val jwtConfig: JwtConfig,
+    private val fileStorageService: FileStorageService,
+    private val baseUrl: String
 ) {
     suspend fun register(request: RegisterRequest): AuthResponse {
         val email = request.email.trim().lowercase()
@@ -49,16 +52,25 @@ class AuthService(
     suspend fun getUserById(id: UUID): User =
         userRepository.findById(id) ?: throw NotFoundException("User not found")
 
+    suspend fun uploadAvatar(userId: UUID, part: PartData.FileItem): UserDto {
+        val relativePath = fileStorageService.saveAvatar(userId, part)
+        val user = userRepository.updateAvatar(userId, relativePath)
+        return user.toDto(baseUrl)
+    }
+
+    fun userToDto(user: User): UserDto = user.toDto(baseUrl)
+
     private fun buildResponse(user: User): AuthResponse {
         val token = jwtConfig.makeToken(user.id, user.email, user.role.name)
-        return AuthResponse(token = token, user = user.toDto())
+        return AuthResponse(token = token, user = user.toDto(baseUrl))
     }
 }
 
-fun User.toDto() = UserDto(
+fun User.toDto(baseUrl: String) = UserDto(
     id = id.toString(),
     email = email,
     displayName = displayName,
     role = role.name,
-    createdAt = createdAt.toString()
+    createdAt = createdAt.toString(),
+    avatarUrl = avatarPath?.let { "$baseUrl/files/images/$it" }
 )
