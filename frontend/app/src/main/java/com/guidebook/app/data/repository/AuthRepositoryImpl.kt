@@ -10,6 +10,7 @@ import com.guidebook.app.data.remote.safeApiCall
 import com.guidebook.app.domain.model.AuthToken
 import com.guidebook.app.domain.model.User
 import com.guidebook.app.domain.repository.AuthRepository
+import android.webkit.MimeTypeMap
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.asRequestBody
@@ -56,7 +57,9 @@ class AuthRepositoryImpl @Inject constructor(
     }
 
     override suspend fun uploadAvatar(file: File): ApiResult<User> {
-        val requestBody = file.asRequestBody("image/*".toMediaTypeOrNull())
+        val mimeType = MimeTypeMap.getSingleton()
+            .getMimeTypeFromExtension(file.extension.lowercase()) ?: "image/jpeg"
+        val requestBody = file.asRequestBody(mimeType.toMediaTypeOrNull())
         val part = MultipartBody.Part.createFormData("avatar", file.name, requestBody)
         return when (val result = safeApiCall { authApi.uploadAvatar(part) }) {
             is ApiResult.Success      -> ApiResult.Success(result.data.toDomain())

@@ -8,6 +8,7 @@ import com.guidebook.app.data.remote.safeApiCall
 import com.guidebook.app.domain.model.PagedData
 import com.guidebook.app.domain.model.Place
 import com.guidebook.app.domain.repository.PlaceRepository
+import android.webkit.MimeTypeMap
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.asRequestBody
@@ -80,7 +81,9 @@ class PlaceRepositoryImpl @Inject constructor(
     }
 
     override suspend fun uploadCover(placeId: String, file: File): ApiResult<Place> {
-        val requestBody = file.asRequestBody("image/*".toMediaTypeOrNull())
+        val mimeType = MimeTypeMap.getSingleton()
+            .getMimeTypeFromExtension(file.extension.lowercase()) ?: "image/jpeg"
+        val requestBody = file.asRequestBody(mimeType.toMediaTypeOrNull())
         val part = MultipartBody.Part.createFormData("file", file.name, requestBody)
         return when (val result = safeApiCall { placeApi.uploadCover(placeId, part) }) {
             is ApiResult.Success      -> ApiResult.Success(result.data.toDomain())

@@ -12,6 +12,7 @@ import okhttp3.RequestBody.Companion.asRequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.File
 import javax.inject.Inject
+import android.webkit.MimeTypeMap
 
 class PhotoRepositoryImpl @Inject constructor(
     private val photoApi: PhotoApi
@@ -26,7 +27,9 @@ class PhotoRepositoryImpl @Inject constructor(
     }
 
     override suspend fun uploadPhoto(placeId: String, file: File, caption: String?): ApiResult<Photo> {
-        val requestBody = file.asRequestBody("image/*".toMediaTypeOrNull())
+        val mimeType = MimeTypeMap.getSingleton()
+            .getMimeTypeFromExtension(file.extension.lowercase()) ?: "image/jpeg"
+        val requestBody = file.asRequestBody(mimeType.toMediaTypeOrNull())
         val part = MultipartBody.Part.createFormData("photo", file.name, requestBody)
         val captionBody = caption?.toRequestBody("text/plain".toMediaTypeOrNull())
         return when (val result = safeApiCall { photoApi.uploadPhoto(placeId, part, captionBody) }) {
